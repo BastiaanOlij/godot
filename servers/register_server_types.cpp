@@ -30,6 +30,9 @@
 #include "register_server_types.h"
 #include "global_config.h"
 
+#include "arvr_server.h"
+#include "arvr/arvr_positional_tracker.h"
+#include "arvr/arvr_interface.h"
 #include "audio/audio_effect.h"
 #include "audio/audio_stream.h"
 #include "audio/effects/audio_effect_amplify.h"
@@ -70,17 +73,24 @@ static void _debugger_get_resource_usage(List<ScriptDebuggerRemote::ResourceUsag
 }
 
 ShaderTypes *shader_types = NULL;
+ArVrServer * arvr_server = NULL;
 
 void register_server_types() {
 
 	GLOBAL_DEF("memory/multithread/thread_rid_pool_prealloc", 20);
 
+	arvr_server = memnew(ArVrServer);
+
 	GlobalConfig::get_singleton()->add_singleton(GlobalConfig::Singleton("VisualServer", VisualServer::get_singleton()));
 	GlobalConfig::get_singleton()->add_singleton(GlobalConfig::Singleton("AudioServer", AudioServer::get_singleton()));
 	GlobalConfig::get_singleton()->add_singleton(GlobalConfig::Singleton("PhysicsServer", PhysicsServer::get_singleton()));
 	GlobalConfig::get_singleton()->add_singleton(GlobalConfig::Singleton("Physics2DServer", Physics2DServer::get_singleton()));
+	GlobalConfig::get_singleton()->add_singleton(GlobalConfig::Singleton("ArVrServer", ArVrServer::get_singleton()));
 
 	shader_types = memnew(ShaderTypes);
+
+	ClassDB::register_virtual_class<ArVrInterface>();
+	ClassDB::register_class<ArVrPositionalTracker>();
 
 	ClassDB::register_virtual_class<AudioStream>();
 	ClassDB::register_virtual_class<AudioStreamPlayback>();
@@ -135,4 +145,5 @@ void register_server_types() {
 void unregister_server_types() {
 
 	memdelete(shader_types);
+	memdelete(arvr_server);
 }
