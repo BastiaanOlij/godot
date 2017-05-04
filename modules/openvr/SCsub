@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+import os
+import methods
+
 Import('env')
 Import('env_modules')
 
@@ -7,10 +10,27 @@ env_openvr = env_modules.Clone()
 
 # Link in openVR
 
-# need to select this for the right platform...
-# also this only works if you rename the openvr_api file to openvr_api.lib.windows.tools.64.lib, have to figure this out
-env.Append(LIBPATH=['#thirdparty/openvr/lib/win64/'])
-env.Append(LIBS=['openvr_api.lib'])
+platform_dir = 'win'
+if ("platform" in env):
+    p = env['platform']
+    if p == 'windows':
+        platform_dir = 'win'
+    elif p == 'x11':
+        platform_dir = 'linux'
+    elif p == 'osx':
+        platform_dir = 'osx'
+
+if 'bits' in env:
+    platform_dir += env['bits']
+else:
+    platform_dir += '64'
+
+env.Append(LIBPATH=['#thirdparty/openvr/lib/' + platform_dir])
+
+if (os.name == "nt" and os.getenv("VCINSTALLDIR")):
+    env.Append(LINKFLAGS=['openvr_api.lib'])
+else:
+    env.Append(LIBS=['openvr_api.lib'])
 
 # have to figure out how to copy openvr_api.dll next to godot :(
 

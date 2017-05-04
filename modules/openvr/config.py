@@ -1,7 +1,6 @@
 
 def can_build(platform):
-	# TODO add mac and linux once steam finished support
-    return platform == 'windows'
+    return platform == 'windows' or platform == 'x11' or platform == 'osx'
 
 
 def configure(env):
