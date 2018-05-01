@@ -43,6 +43,7 @@ void ARVRCamera::_notification(int p_what) {
 			if (origin != NULL) {
 				origin->set_tracked_camera(this);
 			}
+			set_process(true);
 		}; break;
 		case NOTIFICATION_EXIT_TREE: {
 			// need to find our ARVROrigin parent and let it know we're no longer it's camera!
@@ -50,6 +51,19 @@ void ARVRCamera::_notification(int p_what) {
 			if (origin != NULL) {
 				origin->clear_tracked_camera_if(this);
 			}
+			set_process(false);
+		}; break;
+		case NOTIFICATION_PROCESS: {
+			// Get the current projection matrix and send it to the visual server.  This doesn't feel like it
+			// is proper, but will consult with Godot folks and figure out how to do this properly later.
+			ARVRServer *arvr_server = ARVRServer::get_singleton();
+			Ref<ARVRInterface> arvr_interface = arvr_server->get_primary_interface();
+			// Get the current projection matrix and send it to the visual server
+			Size2 viewport_size = get_viewport()->get_camera_rect_size();
+			CameraMatrix cm = arvr_interface->get_projection_for_eye(ARVRInterface::EYE_MONO, viewport_size.aspect(), get_znear(), get_zfar());
+			set_znear(cm.get_z_near());
+			set_zfar(cm.get_z_far());
+			VisualServer::get_singleton()->camera_set_perspective(get_camera(), cm.get_fov(), get_znear(), get_zfar());
 		}; break;
 	};
 };
