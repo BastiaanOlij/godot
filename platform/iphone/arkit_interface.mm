@@ -423,9 +423,8 @@ void ARKitInterface::process() {
 				transform.origin.y = m44.columns[3][1];
 				transform.origin.z = m44.columns[3][2];
 
-				// copy our current frame projection, investigate using projectionMatrixWithViewportSize:orientation:zNear:zFar: so we can set our own near and far
-				// near and far that ARKit uses by default is 0.001 and 1000.0 which are ok enough for Godot.
-				m44 = camera.projectionMatrix;
+				Size2 screen_size = OS::get_singleton()->get_window_size();
+				m44 = [camera projectionMatrixForOrientation:UIInterfaceOrientationLandscapeLeft viewportSize:CGSizeMake(screen_size.width, screen_size.height) zNear:z_near zFar:z_far];
 				projection.matrix[0][0] = m44.columns[0][0];
 				projection.matrix[1][0] = m44.columns[1][0];
 				projection.matrix[2][0] = m44.columns[2][0];
