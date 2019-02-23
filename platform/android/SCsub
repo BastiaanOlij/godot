@@ -169,3 +169,15 @@ if lib_arch_dir != '':
     if ndk_version != None and LooseVersion(ndk_version) >= LooseVersion("15.0.4075724"):
         stl_lib_path = str(env['ANDROID_NDK_ROOT']) + '/sources/cxx-stl/llvm-libc++/libs/' + lib_arch_dir + '/libc++_shared.so'
         env_android.Command(out_dir + '/libc++_shared.so', stl_lib_path, Copy("$TARGET", "$SOURCE"))
+
+    if 'module_arcore_enabled' in env and env['module_arcore_enabled']:
+        from subprocess import call
+        cmd =  "%s/java/gradlew -b %s/../../thirdparty/arcore/extract-arcore-libs.gradle extractNativeLibraries" % (abspath, abspath)
+        call(cmd, shell=True)
+
+        arcore_root_path = "#thirdparty/arcore"
+
+        env_android.Command(out_dir + '/libarcore_sdk_c.so', arcore_root_path + "/jni/" + lib_arch_dir + '/libarcore_sdk_c.so',
+                            Copy("$TARGET", "$SOURCE"))
+        env_android.Command(out_dir + '/libarcore_sdk_jni.so', arcore_root_path + "/jni/" + lib_arch_dir + '/libarcore_sdk_jni.so',
+                            Copy("$TARGET", "$SOURCE"))

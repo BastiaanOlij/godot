@@ -298,6 +298,17 @@ def configure(env):
     env.Append(CPPFLAGS=['-DANDROID_ENABLED', '-DUNIX_ENABLED', '-DNO_FCNTL'])
     env.Append(LIBS=['OpenSLES', 'EGL', 'GLESv3', 'android', 'log', 'z', 'dl'])
 
+    ## arcore, should see about moving this into our module
+    if 'module_arcore_enabled' in env and env['module_arcore_enabled']:
+        abspath = env.Dir(".").abspath
+
+        arcore_root_path = abspath + "/thirdparty/arcore"
+        print "ARCore path: " + arcore_root_path + "/jni/" + arch_subpath
+
+        env.Append(CPPPATH=[arcore_root_path + "/include"])
+        env.Append(LIBPATH=[arcore_root_path + "/jni/" + arch_subpath])
+        env.Append(LIBS=["libarcore_sdk_c","libarcore_sdk_jni"])
+
 # Return NDK version string in source.properties (adapted from the Chromium project).
 def get_ndk_version(path):
     if path is None:

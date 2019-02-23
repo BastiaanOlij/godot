@@ -103,6 +103,7 @@ public class Godot extends Activity implements SensorEventListener, IDownloaderC
 
 	static final int MAX_SINGLETONS = 64;
 	static final int REQUEST_RECORD_AUDIO_PERMISSION = 1;
+	static final int REQUEST_CAMERA_PERMISSION = 2;
 	private IStub mDownloaderClientStub;
 	private IDownloaderService mRemoteService;
 	private TextView mStatusText;
@@ -953,6 +954,13 @@ public class Godot extends Activity implements SensorEventListener, IDownloaderC
 		if (p_name.equals("RECORD_AUDIO")) {
 			if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
 				requestPermissions(new String[] { Manifest.permission.RECORD_AUDIO }, REQUEST_RECORD_AUDIO_PERMISSION);
+				return false;
+			}
+		}
+
+		if (p_name.equals("CAMERA")) {
+			if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+				requestPermissions(new String[] { Manifest.permission.CAMERA }, REQUEST_CAMERA_PERMISSION);
 				return false;
 			}
 		}
