@@ -73,10 +73,7 @@ import android.view.ViewGroup.LayoutParams;
 import android.view.ViewTreeObserver;
 import android.view.Window;
 import android.view.WindowManager;
-import android.widget.Button;
-import android.widget.FrameLayout;
-import android.widget.ProgressBar;
-import android.widget.TextView;
+import android.widget.*;
 import com.google.android.vending.expansion.downloader.DownloadProgressInfo;
 import com.google.android.vending.expansion.downloader.DownloaderClientMarshaller;
 import com.google.android.vending.expansion.downloader.DownloaderServiceMarshaller;
@@ -98,6 +95,7 @@ import org.godotengine.godot.input.GodotEditText;
 import org.godotengine.godot.payments.PaymentsManager;
 import org.godotengine.godot.utils.PermissionsUtil;
 import org.godotengine.godot.xr.XRMode;
+import org.godotengine.godot.xr.arcore.ARCoreUtil;
 
 public abstract class Godot extends Activity implements SensorEventListener, IDownloaderClient {
 
@@ -124,6 +122,7 @@ public abstract class Godot extends Activity implements SensorEventListener, IDo
 	private boolean mStatePaused;
 	private boolean activityResumed;
 	private int mState;
+	private int mDisplayRotation;
 
 	// Used to dispatch events to the main thread.
 	private final Handler mainThreadHandler = new Handler(Looper.getMainLooper());
@@ -416,6 +415,10 @@ public abstract class Godot extends Activity implements SensorEventListener, IDo
 		return deviceInfo.reqGlEsVersion;
 	}
 
+	public int getDisplayRotation() {
+		return mDisplayRotation;
+	}
+
 	private String[] getCommandLine() {
 		InputStream is;
 		try {
@@ -551,6 +554,8 @@ public abstract class Godot extends Activity implements SensorEventListener, IDo
 					xrMode = XRMode.REGULAR;
 				} else if (command_line[i].equals(XRMode.OVR.cmdLineArg)) {
 					xrMode = XRMode.OVR;
+				} else if (command_line[i].equals(XRMode.ARCORE.cmdLineArg)) {
+					xrMode = XRMode.ARCORE;
 				} else if (command_line[i].equals("--use_depth_32")) {
 					use_32_bits = true;
 				} else if (command_line[i].equals("--debug_opengl")) {
@@ -666,6 +671,12 @@ public abstract class Godot extends Activity implements SensorEventListener, IDo
 		}
 
 		mCurrentIntent = getIntent();
+
+		// Check that ARCore is properly setup before progressing.
+		if (ARCoreUtil.shouldSetupARCore(this, xrMode)) {
+			ARCoreUtil.setupARCore(this, mCurrentIntent);
+			return;
+		}
 
 		initializeGodot();
 	}
@@ -783,7 +794,7 @@ public abstract class Godot extends Activity implements SensorEventListener, IDo
 	@Override
 	public void onSensorChanged(SensorEvent event) {
 		Display display = ((WindowManager)getSystemService(WINDOW_SERVICE)).getDefaultDisplay();
-		int displayRotation = display.getRotation();
+		mDisplayRotation = display.getRotation();
 
 		float[] adjustedValues = new float[3];
 		final int axisSwap[][] = {
@@ -793,7 +804,7 @@ public abstract class Godot extends Activity implements SensorEventListener, IDo
 			{ 1, 1, 1, 0 }
 		}; // ROTATION_270
 
-		final int[] as = axisSwap[displayRotation];
+		final int[] as = axisSwap[mDisplayRotation];
 		adjustedValues[0] = (float)as[0] * event.values[as[2]];
 		adjustedValues[1] = (float)as[1] * event.values[as[3]];
 		adjustedValues[2] = event.values[2];

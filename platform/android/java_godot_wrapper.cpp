@@ -50,6 +50,7 @@ GodotJavaWrapper::GodotJavaWrapper(JNIEnv *p_env, jobject p_godot_instance) {
 	}
 
 	// get some method pointers...
+	_get_application_context = p_env->GetMethodID(cls, "getApplicationContext", "()Landroid/content/Context;");
 	_on_video_init = p_env->GetMethodID(cls, "onVideoInit", "()V");
 	_restart = p_env->GetMethodID(cls, "restart", "()V");
 	_finish = p_env->GetMethodID(cls, "forceQuit", "()V");
@@ -66,6 +67,7 @@ GodotJavaWrapper::GodotJavaWrapper(JNIEnv *p_env, jobject p_godot_instance) {
 	_is_activity_resumed = p_env->GetMethodID(cls, "isActivityResumed", "()Z");
 	_vibrate = p_env->GetMethodID(cls, "vibrate", "(I)V");
 	_get_input_fallback_mapping = p_env->GetMethodID(cls, "getInputFallbackMapping", "()Ljava/lang/String;");
+	_get_display_rotation = p_env->GetMethodID(cls, "getDisplayRotation", "()I");
 }
 
 GodotJavaWrapper::~GodotJavaWrapper() {
@@ -94,6 +96,15 @@ jobject GodotJavaWrapper::get_class_loader() {
 		JNIEnv *env = ThreadAndroid::get_env();
 		jmethodID getClassLoader = env->GetMethodID(cls, "getClassLoader", "()Ljava/lang/ClassLoader;");
 		return env->CallObjectMethod(godot_instance, getClassLoader);
+	} else {
+		return NULL;
+	}
+}
+
+jobject GodotJavaWrapper::get_application_context() {
+	if (_get_application_context) {
+		JNIEnv *env = ThreadAndroid::get_env();
+		return env->CallObjectMethod(godot_instance, _get_application_context);
 	} else {
 		return NULL;
 	}
@@ -258,5 +269,14 @@ void GodotJavaWrapper::vibrate(int p_duration_ms) {
 	if (_vibrate) {
 		JNIEnv *env = ThreadAndroid::get_env();
 		env->CallVoidMethod(godot_instance, _vibrate, p_duration_ms);
+	}
+}
+
+int GodotJavaWrapper::get_display_rotation() {
+	if (_get_display_rotation) {
+		JNIEnv *env = ThreadAndroid::get_env();
+		return env->CallIntMethod(godot_instance, _get_display_rotation);
+	} else {
+		return 0;
 	}
 }

@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  XRMode.java                                                          */
+/*  register_types.cpp                                                   */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,25 +28,18 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-package org.godotengine.godot.xr;
+#include "register_types.h"
 
-/**
- * Godot available XR modes.
- */
-public enum XRMode {
-	REGULAR(0, "Regular", "--xr_mode_regular", "Default Android Gamepad"), // Regular/flatscreen
-	OVR(1, "Oculus Mobile VR", "--xr_mode_ovr", ""),
-	ARCORE(2, "AR Core", "--xr_mode_arcore", "");
+#include "arcore_interface.h"
 
-	final int index;
-	final String label;
-	public final String cmdLineArg;
-	public final String inputFallbackMapping;
+void register_arcore_types() {
+	// does it make sense to register the class?
 
-	XRMode(int index, String label, String cmdLineArg, String inputFallbackMapping) {
-		this.index = index;
-		this.label = label;
-		this.cmdLineArg = cmdLineArg;
-		this.inputFallbackMapping = inputFallbackMapping;
-	}
+	Ref<ARCoreInterface> arcore_interface;
+	arcore_interface.instance();
+	ARVRServer::get_singleton()->add_interface(arcore_interface);
+}
+
+void unregister_arcore_types() {
+	// should clean itself up nicely :)
 }

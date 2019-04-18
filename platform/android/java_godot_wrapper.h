@@ -45,6 +45,7 @@ private:
 	jobject godot_instance;
 	jclass cls;
 
+	jmethodID _get_application_context = 0;
 	jmethodID _on_video_init = 0;
 	jmethodID _restart = 0;
 	jmethodID _finish = 0;
@@ -61,6 +62,7 @@ private:
 	jmethodID _is_activity_resumed = 0;
 	jmethodID _vibrate = 0;
 	jmethodID _get_input_fallback_mapping = 0;
+	jmethodID _get_display_rotation = 0;
 
 public:
 	GodotJavaWrapper(JNIEnv *p_env, jobject p_godot_instance);
@@ -71,6 +73,7 @@ public:
 
 	jobject get_class_loader();
 
+	jobject get_application_context();
 	void gfx_init(bool gl2);
 	void on_video_init(JNIEnv *p_env = NULL);
 	void restart(JNIEnv *p_env = NULL);
@@ -90,6 +93,7 @@ public:
 	bool is_activity_resumed();
 	void vibrate(int p_duration_ms);
 	String get_input_fallback_mapping();
+	int get_display_rotation();
 };
 
 #endif /* !JAVA_GODOT_WRAPPER_H */
