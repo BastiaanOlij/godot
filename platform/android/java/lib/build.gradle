@@ -2,6 +2,9 @@ apply plugin: 'com.android.library'
 
 dependencies {
     implementation "com.android.support:support-core-utils:28.0.0"
+
+    //ARCore specific, needs to become options
+    implementation "com.google.ar:core:1.10.0"
 }
 
 def pathToRootDir = "../../../../"

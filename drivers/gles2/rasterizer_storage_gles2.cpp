@@ -69,6 +69,8 @@ GLuint RasterizerStorageGLES2::system_fbo = 0;
 #define _EXT_COMPRESSED_RGB_BPTC_SIGNED_FLOAT 0x8E8E
 #define _EXT_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT 0x8E8F
 
+#define _GL_TEXTURE_EXTERNAL_OES 0x8D65
+
 #ifdef GLES_OVER_GL
 #define _GL_HALF_FLOAT_OES 0x140B
 #else
@@ -611,6 +613,31 @@ void RasterizerStorageGLES2::texture_allocate(RID p_texture, int p_width, int p_
 		//prealloc if video
 		glTexImage2D(texture->target, 0, internal_format, texture->alloc_width, texture->alloc_height, 0, format, type, NULL);
 	}
+
+	texture->active = true;
+}
+
+void RasterizerStorageGLES2::texture_set_external(RID p_texture, int p_width, int p_height) {
+	Texture *texture = texture_owner.get(p_texture);
+	ERR_FAIL_COND(!texture);
+
+	texture->width = p_width;
+	texture->height = p_height;
+
+	// most of this is ignored
+	texture->depth = 1;
+	texture->format = Image::FORMAT_RGBA8;
+	texture->flags = 0;
+	texture->stored_cube_sides = 0;
+	texture->type = VS::TEXTURE_TYPE_2D;
+
+	texture->target = _GL_TEXTURE_EXTERNAL_OES;
+	texture->images.resize(0);
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(texture->target, texture->tex_id);
+	glTexParameteri(texture->target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(texture->target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 	texture->active = true;
 }

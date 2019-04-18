@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  java_godot_wrapper.h                                                 */
+/*  arcore_interface.h                                                   */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,72 +28,89 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-// note, swapped java and godot around in the file name so all the java
-// wrappers are together
+#ifndef ARCORE_INTERFACE_H
+#define ARCORE_INTERFACE_H
 
-#ifndef JAVA_GODOT_WRAPPER_H
-#define JAVA_GODOT_WRAPPER_H
+#include "core/vmap.h"
+#include "servers/arvr/arvr_interface.h"
+#include "servers/arvr/arvr_positional_tracker.h"
+#include "servers/camera/camera_feed.h"
 
-#include <android/log.h>
-#include <jni.h>
+#include "thirdparty/arcore/include/arcore_c_api.h"
 
-#include "string_android.h"
+/**
+	@author Bastiaan Olij <mux213@gmail.com>, Robert Hofstra <robert.hofstra@knowlogy.nl>
+	ARCore interface between Android and Godot
+**/
 
-// Class that makes functions in java/src/org/godotengine/godot/Godot.java callable from C++
-class GodotJavaWrapper {
-private:
-	jobject godot_instance;
-	jclass cls;
+class GodotJavaWrapper;
 
-	jmethodID _get_application_context = 0;
-	jmethodID _on_video_init = 0;
-	jmethodID _restart = 0;
-	jmethodID _finish = 0;
-	jmethodID _set_keep_screen_on = 0;
-	jmethodID _alert = 0;
-	jmethodID _get_GLES_version_code = 0;
-	jmethodID _get_clipboard = 0;
-	jmethodID _set_clipboard = 0;
-	jmethodID _request_permission = 0;
-	jmethodID _request_permissions = 0;
-	jmethodID _get_granted_permissions = 0;
-	jmethodID _init_input_devices = 0;
-	jmethodID _get_surface = 0;
-	jmethodID _is_activity_resumed = 0;
-	jmethodID _vibrate = 0;
-	jmethodID _get_input_fallback_mapping = 0;
-	jmethodID _get_display_rotation = 0;
+class ARCoreInterface : public ARVRInterface {
+	GDCLASS(ARCoreInterface, ARVRInterface);
 
 public:
-	GodotJavaWrapper(JNIEnv *p_env, jobject p_godot_instance);
-	~GodotJavaWrapper();
+	enum InitStatus {
+		NOT_INITIALISED, // We're not initialised
+		START_INITIALISE, // We just started our initialise process
+		INITIALISED, // Yeah! we are up and running
+		INITIALISE_FAILED // We failed to initialise
+	};
 
-	jobject get_activity();
-	jobject get_member_object(const char *p_name, const char *p_class, JNIEnv *p_env = NULL);
+private:
+	InitStatus init_status;
+	GodotJavaWrapper *godot_java;
 
-	jobject get_class_loader();
+	ArSession *ar_session;
+	ArFrame *ar_frame;
+	int width;
+	int height;
+	int display_rotation;
+	uint camera_texture_id;
 
-	jobject get_application_context();
-	void gfx_init(bool gl2);
-	void on_video_init(JNIEnv *p_env = NULL);
-	void restart(JNIEnv *p_env = NULL);
-	void force_quit(JNIEnv *p_env = NULL);
-	void set_keep_screen_on(bool p_enabled);
-	void alert(const String &p_message, const String &p_title);
-	int get_gles_version_code();
-	bool has_get_clipboard();
-	String get_clipboard();
-	bool has_set_clipboard();
-	void set_clipboard(const String &p_text);
-	bool request_permission(const String &p_name);
-	bool request_permissions();
-	Vector<String> get_granted_permissions() const;
-	void init_input_devices();
-	jobject get_surface();
-	bool is_activity_resumed();
-	void vibrate(int p_duration_ms);
-	String get_input_fallback_mapping();
-	int get_display_rotation();
+	Ref<CameraFeed> feed;
+	bool feed_was_setup;
+
+	Transform view;
+	CameraMatrix projection;
+	float z_near, z_far;
+	bool have_display_transform;
+
+	struct anchor_map {
+		ARVRPositionalTracker *tracker;
+		bool stale;
+	};
+
+	VMap<ArPlane *, anchor_map *> anchors;
+	void make_anchors_stale();
+	void remove_stale_anchors();
+
+protected:
+	static void _bind_methods();
+
+public:
+	void _resume();
+	void _pause();
+
+	virtual StringName get_name() const;
+	virtual int get_capabilities() const;
+
+	virtual int get_camera_feed_id();
+
+	virtual bool is_initialized() const;
+	virtual bool initialize();
+	virtual void uninitialize();
+
+	virtual Size2 get_render_targetsize();
+	virtual bool is_stereo();
+	virtual Transform get_transform_for_eye(ARVRInterface::Eyes p_eye, const Transform &p_cam_transform);
+	virtual CameraMatrix get_projection_for_eye(ARVRInterface::Eyes p_eye, real_t p_aspect, real_t p_z_near, real_t p_z_far);
+	virtual void commit_for_eye(ARVRInterface::Eyes p_eye, RID p_render_target, const Rect2 &p_screen_rect);
+
+	virtual void process();
+	virtual void notification(int p_what);
+
+	ARCoreInterface();
+	~ARCoreInterface();
 };
 
-#endif /* !JAVA_GODOT_WRAPPER_H */
+#endif /* !ARCORE_INTERFACE_H */
