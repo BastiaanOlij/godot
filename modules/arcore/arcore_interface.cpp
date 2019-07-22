@@ -68,6 +68,7 @@ int ARCoreInterface::get_camera_feed_id() {
 
 void ARCoreInterface::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("_resume"), &ARCoreInterface::_resume);
+	ClassDB::bind_method(D_METHOD("_pause"), &ARCoreInterface::_pause);
 }
 
 bool ARCoreInterface::is_initialized() const {
@@ -77,20 +78,8 @@ bool ARCoreInterface::is_initialized() const {
 
 void ARCoreInterface::_resume() {
 	if (ar_session == NULL) {
-		// Most of this code is based on the hello ar sample application from Google. Most remarks are
-		// theirs and we'll need to do something with the suggestions made within.
-		ArInstallStatus install_status;
+
 		OS_Android *os_android = (OS_Android *)OS::get_singleton();
-
-		print_line("Godot ARCore: Checking camera");
-
-		// Check our camera privilege
-		// TODO: Note that if we asked for permission already we should just
-		// check if we have permission and fail if we don't, user said no...
-		if (!os_android->request_permission("CAMERA")) {
-			init_status = REQUESTED_CAMERA;
-			return;
-		}
 
 		print_line("Godot ARCore: Getting environment");
 
@@ -98,51 +87,11 @@ void ARCoreInterface::_resume() {
 		JNIEnv *env = ThreadAndroid::get_env();
 
 		godot_java = os_android->get_godot_java();
-		jobject activity = godot_java->get_activity();
-		if (activity == NULL) {
-			print_line("Godot ARCore: Couldn't get activity");
-			init_status = INITIALISE_FAILED; // don't try again.
-			return;
-		}
 		jobject context = godot_java->get_application_context();
 		if (context == NULL) {
 			print_line("Godot ARCore: Couldn't get context");
 			init_status = INITIALISE_FAILED; // don't try again.
 			return;
-		}
-
-		// If install was not yet requested, that means that we are resuming the
-		// activity first time because of explicit user interaction (such as
-		// launching the application)
-		bool user_requested_install = init_status == WAITING_ON_INSTALL ? 0 : 1;
-
-		print_line("Godot ARCore: Request install.");
-
-		// === ATTENTION!  ATTENTION!  ATTENTION! ===
-		// This method can and will fail in user-facing situations.  Your
-		// application must handle these cases at least somewhat gracefully.  See
-		// HelloAR Java sample code for reasonable behavior.
-		ArStatus status = ArCoreApk_requestInstall(env, activity, user_requested_install, &install_status);
-		if (status != AR_SUCCESS) {
-			// I guess we couldn't...
-			print_line("Godot ARCore: Couldn't find ARCore " + itos(status));
-			init_status = INITIALISE_FAILED; // don't try again.
-			return;
-		}
-
-		switch (install_status) {
-			case AR_INSTALL_STATUS_INSTALLED:
-				break;
-			case AR_INSTALL_STATUS_INSTALL_REQUESTED:
-				// ARCore is not installed, we requested the user to install it
-				print_line("Godot ARCore: ARCore installation requested from user.");
-
-				init_status = WAITING_ON_INSTALL;
-
-				return;
-			default:
-				// uh? do we have other options? should we return false here?
-				break;
 		}
 
 		print_line("Godot ARCore: Create ArSession");
@@ -151,11 +100,7 @@ void ARCoreInterface::_resume() {
 		// This method can and will fail in user-facing situations.  Your
 		// application must handle these cases at least somewhat gracefully.  See
 		// HelloAR Java sample code for reasonable behavior.
-		if (ArSession_create(env, context, &ar_session) != AR_SUCCESS) {
-			print_line("Godot ARCore: ARCore couldn't be created.");
-			init_status = INITIALISE_FAILED; // don't try again.
-			return;
-		} else if (ar_session == NULL) {
+		if (ArSession_create(env, context, &ar_session) != AR_SUCCESS || ar_session == NULL) {
 			print_line("Godot ARCore: ARCore couldn't be created.");
 			init_status = INITIALISE_FAILED; // don't try again.
 			return;
@@ -197,8 +142,12 @@ void ARCoreInterface::_resume() {
 			// uh, what do we do in this situation?
 		}
 	}
+}
 
-	return;
+void ARCoreInterface::_pause() {
+	if (ar_session != NULL) {
+		ArSession_pause(ar_session);
+	}
 }
 
 void ARCoreInterface::notification(int p_what) {
@@ -217,7 +166,11 @@ void ARCoreInterface::notification(int p_what) {
 				}
 			}
 		}; break;
-		// TODO need to react to the app being pauzed. Is that NOTIFICATION_WM_FOCUS_OUT??
+		case MainLoop::NOTIFICATION_WM_FOCUS_OUT:
+			if (is_initialized()) {
+				_pause();
+			}
+			break;
 		default:
 			break;
 	}

@@ -28,9 +28,6 @@
 <!--The following values are replaced when Godot exports, modifying them here has no effect. Do these changes in the-->
 <!--export preset. Adding new ones is fine.-->
 
-<!--ARCore meta data. This is modified by the exporter based on whether ARCore is enabled -->
-        <meta-data android:name="com.google.ar.core" android:value="arcore_required" />
-
 <!-- XR mode metadata. This is modified by the exporter based on the selected xr mode. DO NOT CHANGE the values here. -->
         <meta-data android:name="xr_mode_metadata_name" android:value="xr_mode_metadata_value"/>
 
@@ -48,6 +45,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity android:name="org.godotengine.godot.xr.arcore.ARCoreSetupActivity"
+                  android:label="@string/godot_arcore_setup_activity_label"
+                  android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
+                  android:screenOrientation="landscape"/>
 
     <service android:name="org.godotengine.godot.GodotDownloaderService" />
 

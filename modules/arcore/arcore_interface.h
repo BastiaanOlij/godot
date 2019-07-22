@@ -52,8 +52,6 @@ public:
 	enum InitStatus {
 		NOT_INITIALISED, // We're not initialised
 		START_INITIALISE, // We just started our initialise process
-		REQUESTED_CAMERA, // We are waiting on our camera
-		WAITING_ON_INSTALL, // We are waiting on ARCore being installed
 		INITIALISED, // Yeah! we are up and running
 		INITIALISE_FAILED // We failed to initialise
 	};
@@ -91,6 +89,7 @@ protected:
 
 public:
 	void _resume();
+	void _pause();
 
 	virtual StringName get_name() const;
 	virtual int get_capabilities() const;

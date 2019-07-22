@@ -68,10 +68,7 @@ import android.view.ViewGroup.LayoutParams;
 import android.view.ViewTreeObserver;
 import android.view.Window;
 import android.view.WindowManager;
-import android.widget.Button;
-import android.widget.FrameLayout;
-import android.widget.ProgressBar;
-import android.widget.TextView;
+import android.widget.*;
 import com.google.android.vending.expansion.downloader.DownloadProgressInfo;
 import com.google.android.vending.expansion.downloader.DownloaderClientMarshaller;
 import com.google.android.vending.expansion.downloader.DownloaderServiceMarshaller;
@@ -92,6 +89,7 @@ import javax.microedition.khronos.opengles.GL10;
 import org.godotengine.godot.input.GodotEditText;
 import org.godotengine.godot.payments.PaymentsManager;
 import org.godotengine.godot.xr.XRMode;
+import org.godotengine.godot.xr.arcore.ARCoreUtil;
 
 public class Godot extends Activity implements SensorEventListener, IDownloaderClient {
 
@@ -497,6 +495,8 @@ public class Godot extends Activity implements SensorEventListener, IDownloaderC
 					xrMode = XRMode.REGULAR;
 				} else if (command_line[i].equals(XRMode.OVR.cmdLineArg)) {
 					xrMode = XRMode.OVR;
+				} else if (command_line[i].equals(XRMode.ARCORE.cmdLineArg)) {
+					xrMode = XRMode.ARCORE;
 				} else if (command_line[i].equals("--use_depth_32")) {
 					use_32_bits = true;
 				} else if (command_line[i].equals("--debug_opengl")) {
@@ -614,9 +614,13 @@ public class Godot extends Activity implements SensorEventListener, IDownloaderC
 
 		mCurrentIntent = getIntent();
 
-		initializeGodot();
+		// Check that ARCore is properly setup before progressing.
+		if (ARCoreUtil.shouldSetupARCore(this, xrMode)) {
+			ARCoreUtil.setupARCore(this, mCurrentIntent);
+			return;
+		}
 
-		//instanceSingleton( new GodotFacebook(this) );
+		initializeGodot();
 	}
 
 	@Override
