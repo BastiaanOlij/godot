@@ -158,7 +158,7 @@ layout(location = 0) out vec4 frag_color;
 
 void main() {
 
-//vec4 color = color_interp;
+	//vec4 color = color_interp;
 
 #ifdef USE_PANORAMA
 

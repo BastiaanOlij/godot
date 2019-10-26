@@ -38,8 +38,8 @@ import android.widget.Toast;
 import com.google.ar.core.ArCoreApk;
 import com.google.ar.core.exceptions.UnavailableDeviceNotCompatibleException;
 import com.google.ar.core.exceptions.UnavailableUserDeclinedInstallationException;
-import org.godotengine.godot.R;
 import org.godotengine.godot.Godot;
+import org.godotengine.godot.R;
 
 /**
  * Activity used to setup ARCore prior to initializing the Godot engine.
