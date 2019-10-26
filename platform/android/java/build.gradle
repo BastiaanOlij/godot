@@ -133,20 +133,20 @@ task generateGodotTemplates(type: GradleBuild) {
  * Clean the generated artifacts.
  */
 task cleanGodotTemplates(type: Delete) {
-	// Delete the generated native libs
-	delete("lib/libs")
+    // Delete the generated native libs
+    delete("lib/libs")
 
-	// Delete the library generated AAR files
-	delete("lib/build/outputs/aar")
+    // Delete the library generated AAR files
+    delete("lib/build/outputs/aar")
 
-	// Delete the app libs directory contents
-	delete("app/libs")
+    // Delete the app libs directory contents
+    delete("app/libs")
 
-	// Delete the generated binary apks
-	delete("app/build/outputs/apk")
+    // Delete the generated binary apks
+    delete("app/build/outputs/apk")
 
-	// Delete the Godot templates in the Godot bin directory
-	delete("$binDir/android_debug.apk")
-	delete("$binDir/android_release.apk")
-	delete("$binDir/android_source.zip")
+    // Delete the Godot templates in the Godot bin directory
+    delete("$binDir/android_debug.apk")
+    delete("$binDir/android_release.apk")
+    delete("$binDir/android_source.zip")
 }
