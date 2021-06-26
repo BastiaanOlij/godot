@@ -53,7 +53,7 @@ void RenderForwardMobile::RenderBufferDataForwardMobile::clear() {
 	color_fb = RID();
 }
 
-void RenderForwardMobile::RenderBufferDataForwardMobile::configure(RID p_color_buffer, RID p_depth_buffer, int p_width, int p_height, RS::ViewportMSAA p_msaa, uint32_t p_view_count) {
+void RenderForwardMobile::RenderBufferDataForwardMobile::configure(RID p_color_buffer, RID p_depth_buffer, RID p_target_buffer, int p_width, int p_height, RS::ViewportMSAA p_msaa, uint32_t p_view_count) {
 	clear();
 
 	msaa = p_msaa;
@@ -65,19 +65,44 @@ void RenderForwardMobile::RenderBufferDataForwardMobile::configure(RID p_color_b
 	color = p_color_buffer;
 	depth = p_depth_buffer;
 
-	RD::DataFormat color_format = RenderForwardMobile::singleton->_render_buffers_get_color_format();
-
 	if (p_msaa == RS::VIEWPORT_MSAA_DISABLED) {
-		if (color_format == RD::DATA_FORMAT_B10G11R11_UFLOAT_PACK32) {
-			// @TODO add a second color buffer for alpha as this format is RGB only
-		}
+		// Our attachments
 
 		Vector<RID> fb;
-		fb.push_back(p_color_buffer);
-		fb.push_back(depth);
+		fb.push_back(p_color_buffer); // 0
+		fb.push_back(depth); // 1
+		fb.push_back(p_target_buffer); // 2
 
-		color_fb = RD::get_singleton()->framebuffer_create(fb, RenderingDevice::INVALID_ID, view_count);
+		// Now define our subpasses
+		Vector<RD::FramebufferPass> passes;
+		RD::FramebufferPass pass;
+
+		// re-using the same attachments
+		pass.color_attachments.push_back(0);
+		pass.depth_attachment = 1;
+
+		// - opaque pass
+		passes.push_back(pass);
+
+		// - sky pass
+		passes.push_back(pass);
+
+		// We may need to finalise our pass here and start a new pass if we have shaders that use SCREEN_TEXTURE or DEPTH_TEXTURE
+		// I don't think we support this at this time...
+
+		// - alpha pass
+		passes.push_back(pass);
+
+		// - blit to 2D pass
+		RD::FramebufferPass blit_pass;
+		blit_pass.color_attachments.push_back(2);
+		blit_pass.input_attachments.push_back(0);
+		passes.push_back(blit_pass);
+
+		color_fb = RD::get_singleton()->framebuffer_create_multipass(fb, passes, RenderingDevice::INVALID_ID, view_count);
 	} else {
+		RD::DataFormat color_format = RenderForwardMobile::singleton->_render_buffers_get_color_format();
+
 		RD::TextureFormat tf;
 		if (view_count > 1) {
 			tf.texture_type = RD::TEXTURE_TYPE_2D_ARRAY;
@@ -110,12 +135,67 @@ void RenderForwardMobile::RenderBufferDataForwardMobile::configure(RID p_color_b
 
 		{
 			Vector<RID> fb;
-			fb.push_back(color_msaa);
-			fb.push_back(depth_msaa);
+			fb.push_back(color_msaa); // 0
+			fb.push_back(depth_msaa); // 1
+			fb.push_back(color); // 2
+			fb.push_back(p_target_buffer); // 3
 
-			color_fb = RD::get_singleton()->framebuffer_create(fb, RenderingDevice::INVALID_ID, view_count);
+			// Now define our subpasses
+			Vector<RD::FramebufferPass> passes;
+			RD::FramebufferPass pass;
+
+			// re-using the same attachments
+			pass.color_attachments.push_back(0);
+			pass.depth_attachment = 1;
+
+			// - opaque pass
+			passes.push_back(pass);
+
+			// - sky pass
+			passes.push_back(pass);
+
+			// We may need to finalise our pass here and start a new pass if we have shaders that use SCREEN_TEXTURE or DEPTH_TEXTURE
+			// I don't think we support this at this time...
+
+			// - alpha pass
+			pass.resolve_attachments.push_back(2);
+			passes.push_back(pass);
+
+			// - blit to 2D pass
+			RD::FramebufferPass blit_pass;
+			blit_pass.color_attachments.push_back(3);
+			blit_pass.input_attachments.push_back(2);
+			passes.push_back(blit_pass);
+
+			color_fb = RD::get_singleton()->framebuffer_create_multipass(fb, passes, RenderingDevice::INVALID_ID, view_count);
 		}
 	}
+}
+
+RID RenderForwardMobile::reflection_probe_create_framebuffer(RID p_color, RID p_depth) {
+	// Our attachments
+	Vector<RID> fb;
+	fb.push_back(p_color); // 0
+	fb.push_back(p_depth); // 1
+
+	// Now define our subpasses
+	Vector<RD::FramebufferPass> passes;
+	RD::FramebufferPass pass;
+
+	// re-using the same attachments
+	pass.color_attachments.push_back(0);
+	pass.depth_attachment = 1;
+
+	// - opaque pass
+	passes.push_back(pass);
+
+	// - sky pass
+	passes.push_back(pass);
+
+	// - alpha pass
+	passes.push_back(pass);
+
+	return RD::get_singleton()->framebuffer_create_multipass(fb, passes);
 }
 
 RenderForwardMobile::RenderBufferDataForwardMobile::~RenderBufferDataForwardMobile() {
@@ -341,6 +421,15 @@ void RenderForwardMobile::_render_scene(RenderDataRD *p_render_data, const Color
 	RID opaque_framebuffer;
 	RID alpha_framebuffer;
 	bool reverse_cull = false;
+	bool using_subpass_transparent = true;
+	bool using_subpass_post_process = true;
+
+	// !BAS! @TODO We can only use our subpass approach if we're:
+	// - not reading from SCREEN_TEXTURE/DEPTH_TEXTURE, but we find this out MUCH too late
+	// - not using ssr/sss (we don't seem to support that here anyway)
+	// - not using glow or other post effects (checking for this now)
+	// - anything else?
+	// We'll need to restrict how far we're going with subpasses based on this.
 
 	// I don't think we support either of these in our mobile renderer so probably should phase them out
 	bool using_ssr = false;
@@ -356,8 +445,14 @@ void RenderForwardMobile::_render_scene(RenderDataRD *p_render_data, const Color
 		screen_size.x = render_buffer->width;
 		screen_size.y = render_buffer->height;
 
+		if (env && (env->glow_enabled || env->auto_exposure || camera_effects_uses_dof(p_render_data->camera_effects))) {
+			using_subpass_post_process = false;
+		}
+
+		// @TODO we need to have different color buffers here depending on how much we can do with subpasses.
 		opaque_framebuffer = render_buffer->color_fb;
 		alpha_framebuffer = opaque_framebuffer;
+
 	} else if (p_render_data->reflection_probe.is_valid()) {
 		uint32_t resolution = reflection_probe_instance_get_resolution(p_render_data->reflection_probe);
 		screen_size.x = resolution;
@@ -372,6 +467,7 @@ void RenderForwardMobile::_render_scene(RenderDataRD *p_render_data, const Color
 		}
 
 		reverse_cull = true;
+		using_subpass_post_process = false;
 	} else {
 		ERR_FAIL(); //bug?
 	}
@@ -474,91 +570,187 @@ void RenderForwardMobile::_render_scene(RenderDataRD *p_render_data, const Color
 		clear_color = p_default_bg_color;
 	}
 
-	// opaque pass
-
-	// !BAS! Look into this, seems most of the code in here related to clustered only, may want to move this code into ForwardClustered/RenderForwardMobile before calling it from here
-	// does trigger shadow map rendering so kinda important
-	_pre_opaque_render(p_render_data, false, false, RID(), RID());
-
-	RD::get_singleton()->draw_command_begin_label("Render Opaque Pass");
-
-	scene_state.ubo.directional_light_count = p_render_data->directional_light_count;
-
-	_setup_environment(p_render_data, p_render_data->reflection_probe.is_valid(), screen_size, !p_render_data->reflection_probe.is_valid(), p_default_bg_color, p_render_data->render_buffers.is_valid());
-
-	RENDER_TIMESTAMP("Render Opaque Pass");
-
-	RID rp_uniform_set = _setup_render_pass_uniform_set(RENDER_LIST_OPAQUE, p_render_data, radiance_texture, true);
-
-	bool can_continue_color = !scene_state.used_screen_texture && !using_ssr && !using_sss;
-	bool can_continue_depth = !scene_state.used_depth_texture && !using_ssr && !using_sss;
-
-	{
-		bool will_continue_color = (can_continue_color || draw_sky || draw_sky_fog_only);
-		bool will_continue_depth = (can_continue_depth || draw_sky || draw_sky_fog_only);
-
-		// regular forward for now
-		Vector<Color> c;
-		c.push_back(clear_color.to_linear());
-
-		RenderListParameters render_list_params(render_list[RENDER_LIST_OPAQUE].elements.ptr(), render_list[RENDER_LIST_OPAQUE].element_info.ptr(), render_list[RENDER_LIST_OPAQUE].elements.size(), reverse_cull, PASS_MODE_COLOR, rp_uniform_set, get_debug_draw_mode() == RS::VIEWPORT_DEBUG_DRAW_WIREFRAME, Vector2(), p_render_data->lod_camera_plane, p_render_data->lod_distance_multiplier, p_render_data->screen_lod_threshold, p_render_data->view_count);
-		_render_list_with_threads(&render_list_params, opaque_framebuffer, keep_color ? RD::INITIAL_ACTION_KEEP : RD::INITIAL_ACTION_CLEAR, will_continue_color ? RD::FINAL_ACTION_CONTINUE : RD::FINAL_ACTION_READ, RD::INITIAL_ACTION_CLEAR, will_continue_depth ? RD::FINAL_ACTION_CONTINUE : RD::FINAL_ACTION_READ, c, 1.0, 0);
-	}
-
-	RD::get_singleton()->draw_command_end_label();
+	// update sky buffers (if required)
 
 	if (draw_sky || draw_sky_fog_only) {
-		RENDER_TIMESTAMP("Render Sky");
+		// !BAS! @TODO See if we can limit doing some things double and maybe even move this into _pre_opaque_render
+		// and change Forward Clustered in the same way as we have here (but without using subpasses)
+		RENDER_TIMESTAMP("Setup Sky resolution buffers");
 
-		RD::get_singleton()->draw_command_begin_label("Draw Sky");
+		RD::get_singleton()->draw_command_begin_label("Setup Sky resolution buffers");
 
 		if (p_render_data->reflection_probe.is_valid()) {
 			CameraMatrix correction;
 			correction.set_depth_correction(true);
 			CameraMatrix projection = correction * p_render_data->cam_projection;
-			sky.draw(env, can_continue_color, can_continue_depth, opaque_framebuffer, 1, &projection, p_render_data->cam_transform, time);
+			sky.update_res_buffers(env, 1, &projection, p_render_data->cam_transform, time);
 		} else {
-			sky.draw(env, can_continue_color, can_continue_depth, opaque_framebuffer, p_render_data->view_count, p_render_data->view_projection, p_render_data->cam_transform, time);
+			sky.update_res_buffers(env, p_render_data->view_count, p_render_data->view_projection, p_render_data->cam_transform, time);
 		}
+
 		RD::get_singleton()->draw_command_end_label();
 	}
 
-	if (render_buffer && !can_continue_color && render_buffer->msaa != RS::VIEWPORT_MSAA_DISABLED) {
-		RD::get_singleton()->texture_resolve_multisample(render_buffer->color_msaa, render_buffer->color);
-		/*
-		if (using_separate_specular) {
-			RD::get_singleton()->texture_resolve_multisample(render_buffer->specular_msaa, render_buffer->specular);
-		}
-		*/
-	}
-
-	if (render_buffer && !can_continue_depth && render_buffer->msaa != RS::VIEWPORT_MSAA_DISABLED) {
-		RD::get_singleton()->texture_resolve_multisample(render_buffer->depth_msaa, render_buffer->depth);
-	}
-
-	// transparent pass
-	RENDER_TIMESTAMP("Render Transparent Pass");
-
-	RD::get_singleton()->draw_command_begin_label("Render Transparent Pass");
-
-	rp_uniform_set = _setup_render_pass_uniform_set(RENDER_LIST_ALPHA, p_render_data, radiance_texture, true);
-
-	_setup_environment(p_render_data, p_render_data->reflection_probe.is_valid(), screen_size, !p_render_data->reflection_probe.is_valid(), p_default_bg_color, false);
+	// !BAS! Look into this, seems most of the code in here related to clustered only, may want to move this code into ForwardClustered/RenderForwardMobile before calling it from here
+	// does trigger shadow map rendering so kinda important
+	_pre_opaque_render(p_render_data, false, false, RID(), RID());
 
 	{
-		RenderListParameters render_list_params(render_list[RENDER_LIST_ALPHA].elements.ptr(), render_list[RENDER_LIST_ALPHA].element_info.ptr(), render_list[RENDER_LIST_ALPHA].elements.size(), reverse_cull, PASS_MODE_COLOR, rp_uniform_set, get_debug_draw_mode() == RS::VIEWPORT_DEBUG_DRAW_WIREFRAME, Vector2(), p_render_data->lod_camera_plane, p_render_data->lod_distance_multiplier, p_render_data->screen_lod_threshold, p_render_data->view_count);
-		_render_list_with_threads(&render_list_params, alpha_framebuffer, can_continue_color ? RD::INITIAL_ACTION_CONTINUE : RD::INITIAL_ACTION_KEEP, RD::FINAL_ACTION_READ, can_continue_depth ? RD::INITIAL_ACTION_CONTINUE : RD::INITIAL_ACTION_KEEP, RD::FINAL_ACTION_READ);
+		if (render_buffer) {
+			RD::get_singleton()->draw_command_begin_label("Render 3D Pass");
+		} else {
+			RD::get_singleton()->draw_command_begin_label("Render Reflection Probe Pass");
+		}
+
+		// opaque pass
+
+		RD::get_singleton()->draw_command_begin_label("Render Opaque Subpass");
+
+		scene_state.ubo.directional_light_count = p_render_data->directional_light_count;
+
+		_setup_environment(p_render_data, p_render_data->reflection_probe.is_valid(), screen_size, !p_render_data->reflection_probe.is_valid(), p_default_bg_color, p_render_data->render_buffers.is_valid());
+
+		RENDER_TIMESTAMP("Render Opaque Subpass");
+
+		RID rp_uniform_set = _setup_render_pass_uniform_set(RENDER_LIST_OPAQUE, p_render_data, radiance_texture, true);
+
+		bool can_continue_color = !scene_state.used_screen_texture && !using_ssr && !using_sss;
+		bool can_continue_depth = !scene_state.used_depth_texture && !using_ssr && !using_sss;
+
+		{
+			bool will_continue_color = (can_continue_color || draw_sky || draw_sky_fog_only);
+			bool will_continue_depth = (can_continue_depth || draw_sky || draw_sky_fog_only);
+
+			// regular forward for now
+			Vector<Color> c;
+			c.push_back(clear_color.to_linear()); // our render buffer
+			if (render_buffer) {
+				if (render_buffer->msaa != RS::VIEWPORT_MSAA_DISABLED) {
+					c.push_back(clear_color.to_linear()); // our resolve buffer
+				}
+				c.push_back(Color()); // our 2D buffer we're copying into
+			}
+
+			RD::FramebufferFormatID fb_format = RD::get_singleton()->framebuffer_get_format(opaque_framebuffer);
+			RenderListParameters render_list_params(render_list[RENDER_LIST_OPAQUE].elements.ptr(), render_list[RENDER_LIST_OPAQUE].element_info.ptr(), render_list[RENDER_LIST_OPAQUE].elements.size(), reverse_cull, PASS_MODE_COLOR, rp_uniform_set, get_debug_draw_mode() == RS::VIEWPORT_DEBUG_DRAW_WIREFRAME, Vector2(), p_render_data->lod_camera_plane, p_render_data->lod_distance_multiplier, p_render_data->screen_lod_threshold, p_render_data->view_count);
+			render_list_params.framebuffer_format = fb_format;
+			if ((uint32_t)render_list_params.element_count > render_list_thread_threshold && false) {
+				// secondary command buffers need more testing at this time
+				//multi threaded
+				thread_draw_lists.resize(RendererThreadPool::singleton->thread_work_pool.get_thread_count());
+				RD::get_singleton()->draw_list_begin_split(opaque_framebuffer, thread_draw_lists.size(), thread_draw_lists.ptr(), keep_color ? RD::INITIAL_ACTION_KEEP : RD::INITIAL_ACTION_CLEAR, will_continue_color ? RD::FINAL_ACTION_CONTINUE : RD::FINAL_ACTION_READ, RD::INITIAL_ACTION_CLEAR, will_continue_depth ? RD::FINAL_ACTION_CONTINUE : RD::FINAL_ACTION_READ, c, 1.0, 0);
+				RendererThreadPool::singleton->thread_work_pool.do_work(thread_draw_lists.size(), this, &RenderForwardMobile::_render_list_thread_function, &render_list_params);
+			} else {
+				//single threaded
+				RD::DrawListID draw_list = RD::get_singleton()->draw_list_begin(opaque_framebuffer, keep_color ? RD::INITIAL_ACTION_KEEP : RD::INITIAL_ACTION_CLEAR, will_continue_color ? RD::FINAL_ACTION_CONTINUE : RD::FINAL_ACTION_READ, RD::INITIAL_ACTION_CLEAR, will_continue_depth ? RD::FINAL_ACTION_CONTINUE : RD::FINAL_ACTION_READ, c, 1.0, 0);
+				_render_list(draw_list, fb_format, &render_list_params, 0, render_list_params.element_count);
+			}
+		}
+
+		RD::get_singleton()->draw_command_end_label();
+
+		if (draw_sky || draw_sky_fog_only) {
+			RENDER_TIMESTAMP("Render Sky Subpass");
+
+			RD::get_singleton()->draw_command_begin_label("Draw Sky Subpass");
+
+			RD::DrawListID draw_list = RD::get_singleton()->draw_list_switch_to_next_pass();
+
+			if (p_render_data->reflection_probe.is_valid()) {
+				CameraMatrix correction;
+				correction.set_depth_correction(true);
+				CameraMatrix projection = correction * p_render_data->cam_projection;
+				sky.draw(draw_list, env, opaque_framebuffer, 1, &projection, p_render_data->cam_transform, time);
+			} else {
+				sky.draw(draw_list, env, opaque_framebuffer, p_render_data->view_count, p_render_data->view_projection, p_render_data->cam_transform, time);
+			}
+
+			RD::get_singleton()->draw_command_end_label();
+		} else {
+			// switch to subpass but we do nothing here so basically we skip.
+			RD::DrawListID draw_list = RD::get_singleton()->draw_list_switch_to_next_pass();
+		}
+
+		// @TODO we need to re-add a resolve here, or maybe we can do this automatically by adding resolve to subpass #2
+		/*if (render_buffer && !can_continue_color && render_buffer->msaa != RS::VIEWPORT_MSAA_DISABLED) {
+			RD::get_singleton()->texture_resolve_multisample(render_buffer->color_msaa, render_buffer->color);
+
+			// if (using_separate_specular) {
+			//	RD::get_singleton()->texture_resolve_multisample(render_buffer->specular_msaa, render_buffer->specular);
+			// }
+		}*/
+
+		/*if (render_buffer && !can_continue_depth && render_buffer->msaa != RS::VIEWPORT_MSAA_DISABLED) {
+			RD::get_singleton()->texture_resolve_multisample(render_buffer->depth_msaa, render_buffer->depth);
+		}*/
+
+		// transparent pass
+		RENDER_TIMESTAMP("Render Transparent Subpass");
+
+		RD::get_singleton()->draw_command_begin_label("Render Transparent Subpass");
+
+		rp_uniform_set = _setup_render_pass_uniform_set(RENDER_LIST_ALPHA, p_render_data, radiance_texture, true);
+
+		// Not sure why this was re-issued but it just redoes what we've already set before. I'm guessing this was needed when these were separate passes?
+		// _setup_environment(p_render_data, p_render_data->reflection_probe.is_valid(), screen_size, !p_render_data->reflection_probe.is_valid(), p_default_bg_color, false);
+
+		if (using_subpass_transparent) {
+			RD::FramebufferFormatID fb_format = RD::get_singleton()->framebuffer_get_format(alpha_framebuffer);
+			RenderListParameters render_list_params(render_list[RENDER_LIST_ALPHA].elements.ptr(), render_list[RENDER_LIST_ALPHA].element_info.ptr(), render_list[RENDER_LIST_ALPHA].elements.size(), reverse_cull, PASS_MODE_COLOR, rp_uniform_set, get_debug_draw_mode() == RS::VIEWPORT_DEBUG_DRAW_WIREFRAME, Vector2(), p_render_data->lod_camera_plane, p_render_data->lod_distance_multiplier, p_render_data->screen_lod_threshold, p_render_data->view_count);
+			render_list_params.framebuffer_format = fb_format;
+			if ((uint32_t)render_list_params.element_count > render_list_thread_threshold && false) {
+				// secondary command buffers need more testing at this time
+				//multi threaded
+				thread_draw_lists.resize(RendererThreadPool::singleton->thread_work_pool.get_thread_count());
+				RD::get_singleton()->draw_list_switch_to_next_pass_split(thread_draw_lists.size(), thread_draw_lists.ptr());
+				render_list_params.subpass = RD::get_singleton()->get_current_subpass();
+				RendererThreadPool::singleton->thread_work_pool.do_work(thread_draw_lists.size(), this, &RenderForwardMobile::_render_list_thread_function, &render_list_params);
+			} else {
+				//single threaded
+				RD::DrawListID draw_list = RD::get_singleton()->draw_list_switch_to_next_pass();
+				render_list_params.subpass = RD::get_singleton()->get_current_subpass();
+				_render_list(draw_list, fb_format, &render_list_params, 0, render_list_params.element_count);
+			}
+
+			RD::get_singleton()->draw_command_end_label();
+		} else {
+			// @TODO implement!
+
+			RD::get_singleton()->draw_command_end_label();
+
+			/*if (render_buffer && render_buffer->msaa != RS::VIEWPORT_MSAA_DISABLED) {
+				RD::get_singleton()->draw_command_begin_label("Resolve");
+
+				RD::get_singleton()->texture_resolve_multisample(render_buffer->color_msaa, render_buffer->color);
+
+				RD::get_singleton()->draw_command_end_label();
+			}*/
+		}
+
+		// blit to tonemap
+		if (render_buffer && using_subpass_post_process) {
+			_post_process_subpass(render_buffer->color, opaque_framebuffer, p_render_data);
+		}
+
+		RD::get_singleton()->draw_list_end(RD::BARRIER_MASK_ALL);
+
+		RD::get_singleton()->draw_command_end_label();
 	}
 
-	RD::get_singleton()->draw_command_end_label();
+	if (render_buffer && !using_subpass_post_process) {
+		RD::get_singleton()->draw_command_begin_label("Post process pass");
 
-	RD::get_singleton()->draw_command_begin_label("Resolve");
+		// If we need extra effects we do this in its own pass
+		RENDER_TIMESTAMP("Tonemap");
 
-	if (render_buffer && render_buffer->msaa != RS::VIEWPORT_MSAA_DISABLED) {
-		RD::get_singleton()->texture_resolve_multisample(render_buffer->color_msaa, render_buffer->color);
+		_render_buffers_post_process_and_tonemap(p_render_data);
+
+		RD::get_singleton()->draw_command_end_label();
 	}
 
-	RD::get_singleton()->draw_command_end_label();
+	if (render_buffer) {
+		_disable_clear_request(p_render_data);
+	}
 }
 
 /* these are being called from RendererSceneRenderRD::_pre_opaque_render */
@@ -1554,7 +1746,7 @@ void RenderForwardMobile::_render_list_template(RenderingDevice::DrawListID p_dr
 			prev_index_array_rd = index_array_rd;
 		}
 
-		RID pipeline_rd = pipeline->get_render_pipeline(vertex_format, framebuffer_format, p_params->force_wireframe);
+		RID pipeline_rd = pipeline->get_render_pipeline(vertex_format, framebuffer_format, p_params->force_wireframe, p_params->subpass);
 
 		if (pipeline_rd != prev_pipeline_rd) {
 			// checking with prev shader does not make so much sense, as
