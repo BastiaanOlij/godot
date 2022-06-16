@@ -586,7 +586,7 @@ void main() {
 
 	//lay out everything, whatever is unused is optimized away anyway
 	vec3 vertex = vertex_interp;
-	vec3 view = -normalize(vertex_interp);
+	vec3 view = -normalize(vertex_interp - scene_data.eye_offset[ViewIndex].xyz);
 	vec3 albedo = vec3(1.0);
 	vec3 backlight = vec3(0.0);
 	vec4 transmittance_color = vec4(0.0);
