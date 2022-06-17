@@ -1051,7 +1051,7 @@ void main() {
 #else
 			vec3 bent_normal = normal;
 #endif
-			reflection_process(reflection_index, vertex, bent_normal, roughness, ambient_light, specular_light, ambient_accum, reflection_accum);
+			reflection_process(reflection_index, view, vertex, bent_normal, roughness, ambient_light, specular_light, ambient_accum, reflection_accum);
 		}
 
 		if (reflection_accum.a > 0.0) {
