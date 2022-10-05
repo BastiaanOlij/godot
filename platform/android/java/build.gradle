@@ -227,6 +227,22 @@ task copyEditorReleaseApkToBin(type: Copy) {
     include('android_editor-release*.apk')
 }
 
+task copyEditorDebugBinaryToBin(type: Copy) {
+    dependsOn ':editor:assembleDebug'
+
+    from('editor/build/outputs/apk/pancakeGoogle/debug')
+    into(binDir)
+    include('android_editor.apk')
+
+    from('editor/build/outputs/apk/openxrMeta/debug')
+    into(binDir)
+    include('android_editor_openxr_meta.apk')
+
+    from('editor/build/outputs/apk/openxrPico/debug')
+    into(binDir)
+    include('android_editor_openxr_pico.apk')
+}
+
 task copyEditorReleaseAabToBin(type: Copy) {
     dependsOn ':editor:bundleRelease'
     from('editor/build/outputs/bundle/release')
@@ -253,6 +269,18 @@ task copyEditorDevApkToBin(type: Copy) {
     from('editor/build/outputs/apk/dev')
     into(androidEditorBuildsDir)
     include('android_editor-dev.apk')
+
+    from('editor/build/outputs/apk/pancakeGoogle/dev')
+    into(binDir)
+    include('android_editor_dev.apk')
+
+    from('editor/build/outputs/apk/openxrMeta/dev')
+    into(binDir)
+    include('android_editor_openxr_meta_dev.apk')
+
+    from('editor/build/outputs/apk/openxrPico/dev')
+    into(binDir)
+    include('android_editor_openxr_pico_dev.apk')
 }
 
 task copyEditorDevAabToBin(type: Copy) {
@@ -334,6 +362,14 @@ task cleanGodotEditor(type: Delete) {
 
     // Delete the Godot editor apks & aabs in the Godot bin directory
     delete(androidEditorBuildsDir)
+
+    // Delete the Godot editor apks in the Godot bin directory
+    delete("$binDir/android_editor.apk")
+    delete("$binDir/android_editor_dev.apk")
+    delete("$binDir/android_editor_openxr_meta.apk")
+    delete("$binDir/android_editor_openxr_meta_dev.apk")
+    delete("$binDir/android_editor_openxr_pico.apk")
+    delete("$binDir/android_editor_openxr_pico_dev.apk")
 }
 
 /**
