@@ -759,8 +759,8 @@ void OpenXRInterface::process() {
 			Transform3D t;
 			Vector3 linear_velocity;
 			Vector3 angular_velocity;
-			XRPose::TrackingConfidence confidence = openxr_api->get_head_center(t, linear_velocity, angular_velocity);
-			if (confidence != XRPose::XR_TRACKING_CONFIDENCE_NONE) {
+			head_confidence = openxr_api->get_head_center(t, linear_velocity, angular_velocity);
+			if (head_confidence != XRPose::XR_TRACKING_CONFIDENCE_NONE) {
 				// Only update our transform if we have one to update it with
 				// note that poses are stored without world scale and reference frame applied!
 				head_transform = t;
@@ -785,11 +785,7 @@ void OpenXRInterface::process() {
 	}
 
 	if (head.is_valid()) {
-		// TODO figure out how to get our velocities
-
-		head->set_pose("default", head_transform, head_linear_velocity, head_angular_velocity);
-
-		// TODO set confidence on pose once we support tracking this..
+		head->set_pose("default", head_transform, head_linear_velocity, head_angular_velocity, head_confidence);
 	}
 }
 

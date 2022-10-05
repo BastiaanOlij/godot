@@ -108,6 +108,13 @@
 
 #include "modules/modules_enabled.gen.h" // For mono.
 
+// TODO solve this nicer, we shouldn't have a dependency on a module in this way
+// but need to discuss in the group how to solve this better.
+#ifdef MODULE_VR_EDITOR_ENABLED
+#include "modules/vr_editor/vr_editor.h"
+#include "modules/vr_editor/vr_project_manager.h"
+#endif
+
 /* Static members */
 
 // Singletons
@@ -797,7 +804,8 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 		if (I->get() == "--audio-driver" ||
 				I->get() == "--display-driver" ||
 				I->get() == "--rendering-method" ||
-				I->get() == "--rendering-driver") {
+				I->get() == "--rendering-driver" ||
+				I->get() == "--xr-mode") {
 			if (I->next()) {
 				forwardable_cli_arguments[CLI_SCOPE_TOOL].push_back(I->get());
 				forwardable_cli_arguments[CLI_SCOPE_TOOL].push_back(I->next()->get());
@@ -1430,7 +1438,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 		packed_data->set_disabled(true);
 		Engine::get_singleton()->set_editor_hint(true);
 		main_args.push_back("--editor");
-		if (!init_windowed) {
+		if (!init_windowed && XRServer::get_xr_mode() != XRServer::XRMODE_ON) {
 			init_maximized = true;
 			window_mode = DisplayServer::WINDOW_MODE_MAXIMIZED;
 		}
@@ -1548,6 +1556,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 		default_renderer_mobile = "gl_compatibility";
 	}
 	// Default to Compatibility when using the project manager.
+	// Note temporarily disabled if XR mode is ON, this is only used for the VR editor which currently can't be used with OpenGL.
 	if (rendering_driver.is_empty() && rendering_method.is_empty() && project_manager) {
 		rendering_driver = "opengl3";
 		rendering_method = "gl_compatibility";
@@ -2792,8 +2801,14 @@ bool Main::start() {
 		EditorNode *editor_node = nullptr;
 		if (editor) {
 			Engine::get_singleton()->startup_benchmark_begin_measure("editor");
-			editor_node = memnew(EditorNode);
-			sml->get_root()->add_child(editor_node);
+
+#ifdef MODULE_VR_EDITOR_ENABLED
+			editor_node = VREditor::init_editor(sml);
+#endif
+			if (!editor_node) {
+				editor_node = memnew(EditorNode);
+				sml->get_root()->add_child(editor_node);
+			}
 
 			if (!_export_preset.is_empty()) {
 				editor_node->export_preset(_export_preset, positional_arg, export_debug, export_pack_only);
@@ -2991,10 +3006,18 @@ bool Main::start() {
 		if (project_manager) {
 			Engine::get_singleton()->startup_benchmark_begin_measure("project_manager");
 			Engine::get_singleton()->set_editor_hint(true);
-			ProjectManager *pmanager = memnew(ProjectManager);
-			ProgressDialog *progress_dialog = memnew(ProgressDialog);
-			pmanager->add_child(progress_dialog);
-			sml->get_root()->add_child(pmanager);
+
+			bool has_vr_editor = false;
+#ifdef MODULE_VR_EDITOR_ENABLED
+			has_vr_editor = VRProjectManager::init_project_manager(sml);
+#endif
+
+			if (!has_vr_editor) {
+				ProjectManager *pmanager = memnew(ProjectManager);
+				ProgressDialog *progress_dialog = memnew(ProgressDialog);
+				pmanager->add_child(progress_dialog);
+				sml->get_root()->add_child(pmanager);
+			}
 			DisplayServer::get_singleton()->set_context(DisplayServer::CONTEXT_PROJECTMAN);
 			Engine::get_singleton()->startup_benchmark_end_measure();
 		}

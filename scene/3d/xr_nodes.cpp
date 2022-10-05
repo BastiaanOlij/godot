@@ -36,6 +36,10 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void XRCamera3D::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_tracking_confidence"), &XRCamera3D::get_tracking_confidence);
+}
+
 void XRCamera3D::_bind_tracker() {
 	XRServer *xr_server = XRServer::get_singleton();
 	ERR_FAIL_NULL(xr_server);
@@ -89,6 +93,16 @@ PackedStringArray XRCamera3D::get_configuration_warnings() const {
 
 	return warnings;
 };
+
+XRPose::TrackingConfidence XRCamera3D::get_tracking_confidence() {
+	if (tracker.is_null()) {
+		return XRPose::XR_TRACKING_CONFIDENCE_NONE;
+	} else if (!tracker->has_pose(pose_name)) {
+		return XRPose::XR_TRACKING_CONFIDENCE_NONE;
+	} else {
+		return tracker->get_pose(pose_name)->get_tracking_confidence();
+	}
+}
 
 Vector3 XRCamera3D::project_local_ray_normal(const Point2 &p_pos) const {
 	// get our XRServer
@@ -232,6 +246,7 @@ void XRNode3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_is_active"), &XRNode3D::get_is_active);
 	ClassDB::bind_method(D_METHOD("get_has_tracking_data"), &XRNode3D::get_has_tracking_data);
 	ClassDB::bind_method(D_METHOD("get_pose"), &XRNode3D::get_pose);
+	ClassDB::bind_method(D_METHOD("get_tracking_confidence"), &XRNode3D::get_tracking_confidence);
 	ClassDB::bind_method(D_METHOD("trigger_haptic_pulse", "action_name", "frequency", "amplitude", "duration_sec", "delay_sec"), &XRNode3D::trigger_haptic_pulse);
 };
 
@@ -311,6 +326,16 @@ bool XRNode3D::get_has_tracking_data() const {
 		return false;
 	} else {
 		return tracker->get_pose(pose_name)->get_has_tracking_data();
+	}
+}
+
+XRPose::TrackingConfidence XRNode3D::get_tracking_confidence() {
+	if (tracker.is_null()) {
+		return XRPose::XR_TRACKING_CONFIDENCE_NONE;
+	} else if (!tracker->has_pose(pose_name)) {
+		return XRPose::XR_TRACKING_CONFIDENCE_NONE;
+	} else {
+		return tracker->get_pose(pose_name)->get_tracking_confidence();
 	}
 }
 
