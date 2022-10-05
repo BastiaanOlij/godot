@@ -53,6 +53,7 @@ private:
 
 	// At a minimum we need a tracker for our head
 	Ref<XRPositionalTracker> head;
+	XRPose::TrackingConfidence head_confidence = XRPose::XR_TRACKING_CONFIDENCE_NONE;
 	Transform3D head_transform;
 	Vector3 head_linear_velocity;
 	Vector3 head_angular_velocity;
