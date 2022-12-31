@@ -4,14 +4,6 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
-dependencies {
-    implementation libraries.kotlinStdLib
-    implementation libraries.androidxFragment
-    implementation project(":lib")
-
-    implementation "androidx.window:window:1.0.0"
-}
-
 ext {
     // Build number added as a suffix to the version code, and incremented for each build/upload to
     // the Google Play store.
@@ -76,6 +68,35 @@ android {
         }
     }
 
+    flavorDimensions "xrMode", "xrRuntime"
+    productFlavors {
+        pancake {
+            dimension "xrMode"
+        }
+        openxr {
+            dimension "xrMode"
+            ndk {
+                abiFilters "arm64-v8a"
+            }
+            applicationIdSuffix ".openxr"
+            versionNameSuffix "-openxr"
+        }
+
+        google {
+            dimension "xrRuntime"
+        }
+        meta {
+            dimension "xrRuntime"
+            applicationIdSuffix ".meta"
+            versionNameSuffix "-meta"
+        }
+        pico {
+            dimension "xrRuntime"
+            applicationIdSuffix ".pico"
+            versionNameSuffix "-pico"
+        }
+    }
+
     packagingOptions {
         // 'doNotStrip' is enabled for development within Android Studio
         if (shouldNotStrip()) {
@@ -83,19 +104,70 @@ android {
         }
     }
 
-    // Disable 'release' buildtype.
-    // The editor can't be used with target=release only, as debugging tools are then not
-    // included, and it would crash on errors instead of reporting them.
     variantFilter { variant ->
+        // Disable 'release' buildtype.
+        // The editor can't be used with target=release only, as debugging tools are then not
+        // included, and it would crash on errors instead of reporting them.
         if (variant.buildType.name == "release") {
+            setIgnore(true)
+        }
+
+        // Disable invalid flavors combinations
+        def names = variant.flavors*.name
+        if (names.contains("pancake")) {
+            if (names.contains("meta") || names.contains("pico")) {
+                setIgnore(true)
+            }
+        }
+        if (names.contains("openxr") && names.contains("google")) {
             setIgnore(true)
         }
     }
 
     applicationVariants.all { variant ->
         variant.outputs.all { output ->
-            def suffix = variant.name == "dev" ? "_dev" : ""
+            def suffix = ""
+            switch (variant.name) {
+                case "openxrMetaDev":
+                    suffix = "_openxr_meta_dev"
+                    break
+                case "openxrMetaDebug":
+                    suffix = "_openxr_meta"
+                    break
+                case "openxrPicoDev":
+                    suffix = "_openxr_pico_dev"
+                    break
+                case "openxrPicoDebug":
+                    suffix = "_openxr_pico"
+                    break
+                case "pancakeGoogleDev":
+                    suffix = "_dev"
+                    break
+                case "pancakeGoogleDebug":
+                default:
+                    suffix = ""
+                    break
+            }
             output.outputFileName = "android_editor${suffix}.apk"
         }
     }
+}
+
+configurations {
+    openxrMetaImplementation {}
+    openxrPicoImplementation {}
+}
+
+dependencies {
+    implementation libraries.kotlinStdLib
+    implementation libraries.androidxFragment
+    implementation project(":lib")
+
+    implementation "androidx.window:window:1.0.0"
+
+    // Meta OpenXR dependencies
+    openxrMetaImplementation "org.godotengine:godot-openxr-loaders-meta:1.0.0"
+
+    // Pico OpenXR dependencies
+    openxrPicoImplementation "org.godotengine:godot-openxr-loaders-pico:1.0.0"
 }

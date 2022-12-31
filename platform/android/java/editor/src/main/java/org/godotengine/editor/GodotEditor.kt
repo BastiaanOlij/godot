@@ -38,6 +38,7 @@ import android.content.pm.PackageManager
 import android.os.*
 import android.util.Log
 import android.widget.Toast
+import androidx.annotation.CallSuper
 import androidx.window.layout.WindowMetricsCalculator
 import org.godotengine.godot.FullScreenGodotApp
 import org.godotengine.godot.GodotLib
@@ -107,7 +108,8 @@ open class GodotEditor : FullScreenGodotApp() {
 		}
 	}
 
-	private fun updateCommandLineParams(args: Array<String>?) {
+	@CallSuper
+	protected open fun updateCommandLineParams(args: Array<String>?) {
 		// Update the list of command line params with the new args
 		commandLineParams.clear()
 		if (args != null && args.isNotEmpty()) {
@@ -115,13 +117,29 @@ open class GodotEditor : FullScreenGodotApp() {
 		}
 	}
 
-	override fun getCommandLine() = commandLineParams
+	final override fun getCommandLine() = commandLineParams
 
 	override fun onNewGodotInstanceRequested(args: Array<String>): Int {
 		// Parse the arguments to figure out which activity to start.
 		var targetClass: Class<*> = GodotGame::class.java
 		var instanceId = GAME_ID
 
+		for (arg in args) {
+			if (EDITOR_ARG == arg || EDITOR_ARG_SHORT == arg) {
+				targetClass = GodotEditor::class.java
+				break
+			}
+
+			if (PROJECT_MANAGER_ARG == arg || PROJECT_MANAGER_ARG_SHORT == arg) {
+				targetClass = GodotProjectManager::class.java
+				break
+			}
+		}
+
+		return targetClass
+	}
+
+	open fun shouldLaunchGodotInstanceAdjacent(args: Array<String>): Boolean {
 		// Whether we should launch the new godot instance in an adjacent window
 		// https://developer.android.com/reference/android/content/Intent#FLAG_ACTIVITY_LAUNCH_ADJACENT
 		var launchAdjacent =
@@ -129,19 +147,24 @@ open class GodotEditor : FullScreenGodotApp() {
 
 		for (arg in args) {
 			if (EDITOR_ARG == arg || EDITOR_ARG_SHORT == arg) {
-				targetClass = GodotEditor::class.java
 				launchAdjacent = false
 				instanceId = EDITOR_ID
 				break
 			}
 
 			if (PROJECT_MANAGER_ARG == arg || PROJECT_MANAGER_ARG_SHORT == arg) {
-				targetClass = GodotProjectManager::class.java
 				launchAdjacent = false
 				instanceId = PROJECT_MANAGER_ID
 				break
 			}
 		}
+
+		return launchAdjacent
+	}
+
+	final override fun onNewGodotInstanceRequested(args: Array<String>) {
+		val launchAdjacent = shouldLaunchGodotInstanceAdjacent(args)
+		val targetClass = selectGodotInstanceTargetClass(args)
 
 		// Launch a new activity
 		val newInstance = Intent(this, targetClass)
