@@ -119,10 +119,9 @@ open class GodotEditor : FullScreenGodotApp() {
 
 	final override fun getCommandLine() = commandLineParams
 
-	override fun onNewGodotInstanceRequested(args: Array<String>): Int {
+	open fun selectGodotInstanceTargetClass(args: Array<String>): Class<*> {
 		// Parse the arguments to figure out which activity to start.
 		var targetClass: Class<*> = GodotGame::class.java
-		var instanceId = GAME_ID
 
 		for (arg in args) {
 			if (EDITOR_ARG == arg || EDITOR_ARG_SHORT == arg) {
@@ -148,13 +147,11 @@ open class GodotEditor : FullScreenGodotApp() {
 		for (arg in args) {
 			if (EDITOR_ARG == arg || EDITOR_ARG_SHORT == arg) {
 				launchAdjacent = false
-				instanceId = EDITOR_ID
 				break
 			}
 
 			if (PROJECT_MANAGER_ARG == arg || PROJECT_MANAGER_ARG_SHORT == arg) {
 				launchAdjacent = false
-				instanceId = PROJECT_MANAGER_ID
 				break
 			}
 		}
@@ -162,7 +159,7 @@ open class GodotEditor : FullScreenGodotApp() {
 		return launchAdjacent
 	}
 
-	final override fun onNewGodotInstanceRequested(args: Array<String>) {
+	final override fun onNewGodotInstanceRequested(args: Array<String>): Int {
 		val launchAdjacent = shouldLaunchGodotInstanceAdjacent(args)
 		val targetClass = selectGodotInstanceTargetClass(args)
 
