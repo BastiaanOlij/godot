@@ -516,7 +516,7 @@ void OpenXRActionMap::create_editor_action_sets() {
 
 	// Create our interaction profiles
 	Ref<OpenXRInteractionProfile> profile = OpenXRInteractionProfile::new_profile("/interaction_profiles/khr/simple_controller");
-	profile->add_new_binding(select, "/user/hand/left/input/trigger/click,/user/hand/right/input/trigger/click");
+	profile->add_new_binding(select, "/user/hand/left/input/select/click,/user/hand/right/input/select/click");
 	// simple controller doesn't support grip or has extra buttons so no alt_select support, shame...
 	profile->add_new_binding(tool_pose, "/user/hand/left/input/aim/pose,/user/hand/right/input/aim/pose");
 	add_interaction_profile(profile);
@@ -531,7 +531,7 @@ void OpenXRActionMap::create_editor_action_sets() {
 
 	// Create our WMR controller profile
 	profile = OpenXRInteractionProfile::new_profile("/interaction_profiles/microsoft/motion_controller");
-	profile->add_new_binding(select, "/user/hand/left/input/trigger/click,/user/hand/right/input/trigger/click");
+	profile->add_new_binding(select, "/user/hand/left/input/trigger/value,/user/hand/right/input/trigger/value");
 	// no alt_select support, we don't have extra buttons, maybe abuse menu?
 	profile->add_new_binding(grab, "/user/hand/left/input/squeeze/click,/user/hand/right/input/squeeze/click"); // OpenXR will convert bool to float
 	profile->add_new_binding(tool_pose, "/user/hand/left/input/aim/pose,/user/hand/right/input/aim/pose");
@@ -539,7 +539,7 @@ void OpenXRActionMap::create_editor_action_sets() {
 
 	// Create our Meta touch controller profile
 	profile = OpenXRInteractionProfile::new_profile("/interaction_profiles/oculus/touch_controller");
-	profile->add_new_binding(select, "/user/hand/left/input/trigger/click,/user/hand/right/input/trigger/click");
+	profile->add_new_binding(select, "/user/hand/left/input/trigger/value,/user/hand/right/input/trigger/value");
 	profile->add_new_binding(alt_select, "/user/hand/left/input/x/click,/user/hand/right/input/a/click");
 	profile->add_new_binding(grab, "/user/hand/left/input/squeeze/value,/user/hand/right/input/squeeze/value"); // should be converted to boolean
 	profile->add_new_binding(tool_pose, "/user/hand/left/input/aim/pose,/user/hand/right/input/aim/pose");
@@ -555,15 +555,15 @@ void OpenXRActionMap::create_editor_action_sets() {
 
 	// Create our HP MR controller profile
 	profile = OpenXRInteractionProfile::new_profile("/interaction_profiles/hp/mixed_reality_controller");
-	profile->add_new_binding(select, "/user/hand/left/input/trigger/click,/user/hand/right/input/trigger/click");
+	profile->add_new_binding(select, "/user/hand/left/input/trigger/value,/user/hand/right/input/trigger/value");
 	profile->add_new_binding(alt_select, "/user/hand/left/input/x/click,/user/hand/right/input/a/click");
-	profile->add_new_binding(grab, "/user/hand/left/input/squeeze/click,/user/hand/right/input/squeeze/click"); // OpenXR will convert bool to float
+	profile->add_new_binding(grab, "/user/hand/left/input/squeeze/value,/user/hand/right/input/squeeze/value"); // OpenXR will convert bool to float
 	profile->add_new_binding(tool_pose, "/user/hand/left/input/aim/pose,/user/hand/right/input/aim/pose");
 	add_interaction_profile(profile);
 
 	// Create our Samsung Odyssey controller profile,
 	profile = OpenXRInteractionProfile::new_profile("/interaction_profiles/samsung/odyssey_controller");
-	profile->add_new_binding(select, "/user/hand/left/input/trigger/click,/user/hand/right/input/trigger/click");
+	profile->add_new_binding(select, "/user/hand/left/input/trigger/value,/user/hand/right/input/trigger/value");
 	// no alt_select support, we don't have extra buttons, maybe abuse menu?
 	profile->add_new_binding(grab, "/user/hand/left/input/squeeze/click,/user/hand/right/input/squeeze/click");
 	profile->add_new_binding(tool_pose, "/user/hand/left/input/aim/pose,/user/hand/right/input/aim/pose");
