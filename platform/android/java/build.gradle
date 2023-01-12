@@ -216,16 +216,34 @@ def isAndroidStudio() {
 
 task copyEditorDebugBinaryToBin(type: Copy) {
     dependsOn ':editor:assembleDebug'
-    from('editor/build/outputs/apk/debug')
+
+    from('editor/build/outputs/apk/pancakeGoogle/debug')
     into(binDir)
     include('android_editor.apk')
+
+    from('editor/build/outputs/apk/openxrMeta/debug')
+    into(binDir)
+    include('android_editor_openxr_meta.apk')
+
+    from('editor/build/outputs/apk/openxrPico/debug')
+    into(binDir)
+    include('android_editor_openxr_pico.apk')
 }
 
 task copyEditorDevBinaryToBin(type: Copy) {
     dependsOn ':editor:assembleDev'
-    from('editor/build/outputs/apk/dev')
+
+    from('editor/build/outputs/apk/pancakeGoogle/dev')
     into(binDir)
     include('android_editor_dev.apk')
+
+    from('editor/build/outputs/apk/openxrMeta/dev')
+    into(binDir)
+    include('android_editor_openxr_meta_dev.apk')
+
+    from('editor/build/outputs/apk/openxrPico/dev')
+    into(binDir)
+    include('android_editor_openxr_pico_dev.apk')
 }
 
 /**
@@ -297,6 +315,10 @@ task cleanGodotEditor(type: Delete) {
     // Delete the Godot editor apks in the Godot bin directory
     delete("$binDir/android_editor.apk")
     delete("$binDir/android_editor_dev.apk")
+    delete("$binDir/android_editor_openxr_meta.apk")
+    delete("$binDir/android_editor_openxr_meta_dev.apk")
+    delete("$binDir/android_editor_openxr_pico.apk")
+    delete("$binDir/android_editor_openxr_pico_dev.apk")
 }
 
 /**

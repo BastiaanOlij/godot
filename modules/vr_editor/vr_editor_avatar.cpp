@@ -259,7 +259,7 @@ void VRHand::_notification(int p_notification) {
 		case NOTIFICATION_INTERNAL_PROCESS: {
 			// Controllers that have a pressure sensor can have unreliable thresholds so we hardcode this.
 			// Controllers that don't have a pressure sensor simply return 0.0 or 1.0
-			float grab_value = get_value("grab");
+			float grab_value = get_float("grab");
 			if (grab_value < 0.35 && grab_pressed) {
 				grab_pressed = false;
 

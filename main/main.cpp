@@ -1556,7 +1556,6 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 		default_renderer_mobile = "gl_compatibility";
 	}
 	// Default to Compatibility when using the project manager.
-	// Note temporarily disabled if XR mode is ON, this is only used for the VR editor which currently can't be used with OpenGL.
 	if (rendering_driver.is_empty() && rendering_method.is_empty() && project_manager) {
 		rendering_driver = "opengl3";
 		rendering_method = "gl_compatibility";
