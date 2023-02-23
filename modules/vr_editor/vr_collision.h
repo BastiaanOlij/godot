@@ -74,10 +74,11 @@ public:
 	};
 
 	void _on_interact_enter(const Vector3 &p_position);
-	void _on_interact_moved(const Vector3 &p_position, BitField<MouseButtonMask> p_button_mask, float p_pressure);
+	void _on_interact_moved(const Vector3 &p_position, float p_pressure);
 	void _on_interact_leave(const Vector3 &p_position);
-	void _on_interact_pressed(const Vector3 &p_position, MouseButton p_button, BitField<MouseButtonMask> p_button_mask);
-	void _on_interact_released(const Vector3 &p_position, MouseButton p_button, BitField<MouseButtonMask> p_button_mask);
+	void _on_interact_pressed(const Vector3 &p_position, MouseButton p_button);
+	void _on_interact_released(const Vector3 &p_position, MouseButton p_button);
+	void _on_interact_scrolled(const Vector3 &p_position, const Vector2 &p_scroll_delta);
 
 	VRCollision();
 	virtual ~VRCollision();

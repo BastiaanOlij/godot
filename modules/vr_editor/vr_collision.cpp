@@ -34,10 +34,11 @@ Vector<VRCollision *> VRCollision::collisions;
 
 void VRCollision::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("interact_enter", PropertyInfo(Variant::VECTOR3, "position")));
-	ADD_SIGNAL(MethodInfo("interact_moved", PropertyInfo(Variant::VECTOR3, "position"), PropertyInfo(Variant::INT, "button_mask"), PropertyInfo(Variant::FLOAT, "pressure")));
+	ADD_SIGNAL(MethodInfo("interact_moved", PropertyInfo(Variant::VECTOR3, "position"), PropertyInfo(Variant::FLOAT, "pressure")));
 	ADD_SIGNAL(MethodInfo("interact_leave", PropertyInfo(Variant::VECTOR3, "position")));
-	ADD_SIGNAL(MethodInfo("interact_pressed", PropertyInfo(Variant::VECTOR3, "position"), PropertyInfo(Variant::INT, "button"), PropertyInfo(Variant::INT, "button_mask")));
-	ADD_SIGNAL(MethodInfo("interact_released", PropertyInfo(Variant::VECTOR3, "position"), PropertyInfo(Variant::INT, "button"), PropertyInfo(Variant::INT, "button_mask")));
+	ADD_SIGNAL(MethodInfo("interact_pressed", PropertyInfo(Variant::VECTOR3, "position"), PropertyInfo(Variant::INT, "button")));
+	ADD_SIGNAL(MethodInfo("interact_released", PropertyInfo(Variant::VECTOR3, "position"), PropertyInfo(Variant::INT, "button")));
+	ADD_SIGNAL(MethodInfo("interact_scrolled", PropertyInfo(Variant::VECTOR3, "position"), PropertyInfo(Variant::VECTOR2, "scroll_delta")));
 }
 
 Vector<VRCollision *> VRCollision::get_hit_tests(bool p_inc_can_interact, bool p_inc_can_grab) {
@@ -57,20 +58,24 @@ void VRCollision::_on_interact_enter(const Vector3 &p_position) {
 	emit_signal("interact_enter", p_position);
 }
 
-void VRCollision::_on_interact_moved(const Vector3 &p_position, BitField<MouseButtonMask> p_button_mask, float p_pressure) {
-	emit_signal("interact_moved", p_position, p_button_mask, p_pressure);
+void VRCollision::_on_interact_moved(const Vector3 &p_position, float p_pressure) {
+	emit_signal("interact_moved", p_position, p_pressure);
 }
 
 void VRCollision::_on_interact_leave(const Vector3 &p_position) {
 	emit_signal("interact_leave", p_position);
 }
 
-void VRCollision::_on_interact_pressed(const Vector3 &p_position, MouseButton p_button, BitField<MouseButtonMask> p_button_mask) {
-	emit_signal("interact_pressed", p_position, p_button, p_button_mask);
+void VRCollision::_on_interact_pressed(const Vector3 &p_position, MouseButton p_button) {
+	emit_signal("interact_pressed", p_position, p_button);
 }
 
-void VRCollision::_on_interact_released(const Vector3 &p_position, MouseButton p_button, BitField<MouseButtonMask> p_button_mask) {
-	emit_signal("interact_released", p_position, p_button, p_button_mask);
+void VRCollision::_on_interact_released(const Vector3 &p_position, MouseButton p_button) {
+	emit_signal("interact_released", p_position, p_button);
+}
+
+void VRCollision::_on_interact_scrolled(const Vector3 &p_position, const Vector2 &p_scroll_delta) {
+	emit_signal("interact_scrolled", p_position, p_scroll_delta);
 }
 
 VRCollision::VRCollision() {

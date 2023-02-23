@@ -188,9 +188,11 @@ void VRWindow::_on_interact_enter(const Vector3 &p_position) {
 	// don't seem to have a good event for this
 
 	last_position = _calc_mouse_position(p_position);
+	// Reset the buttons state
+	buttons_state = BitField<MouseButtonMask>();
 }
 
-void VRWindow::_on_interact_moved(const Vector3 &p_position, BitField<MouseButtonMask> p_button_mask, float p_pressure) {
+void VRWindow::_on_interact_moved(const Vector3 &p_position, float p_pressure) {
 	// Note, we potentially can have the left and right hand sent mixed signals here
 	// For now we accept that.
 
@@ -202,7 +204,7 @@ void VRWindow::_on_interact_moved(const Vector3 &p_position, BitField<MouseButto
 	mouse_event->set_position(pos);
 	mouse_event->set_global_position(pos);
 	mouse_event->set_relative(pos - last_position);
-	mouse_event->set_button_mask(p_button_mask);
+	mouse_event->set_button_mask(buttons_state);
 	mouse_event->set_pressure(p_pressure);
 
 	subviewport->push_input(mouse_event, true);
@@ -213,11 +215,15 @@ void VRWindow::_on_interact_moved(const Vector3 &p_position, BitField<MouseButto
 void VRWindow::_on_interact_leave(const Vector3 &p_position) {
 	// don't seem to have a good event for this
 	last_position = _calc_mouse_position(p_position);
+	// Reset the buttons state
+	buttons_state = BitField<MouseButtonMask>();
 }
 
-void VRWindow::_on_interact_pressed(const Vector3 &p_position, MouseButton p_button, BitField<MouseButtonMask> p_button_mask) {
+void VRWindow::_on_interact_pressed(const Vector3 &p_position, MouseButton p_button) {
 	// Note, we potentially can have the left and right hand sent mixed signals here
 	// For now we accept that.
+
+	buttons_state.set_flag(mouse_button_to_mask(p_button));
 
 	Vector2 pos = _calc_mouse_position(p_position);
 
@@ -228,14 +234,51 @@ void VRWindow::_on_interact_pressed(const Vector3 &p_position, MouseButton p_but
 	mouse_event->set_pressed(true);
 	mouse_event->set_position(pos);
 	mouse_event->set_global_position(pos);
-	mouse_event->set_button_mask(p_button_mask);
+	mouse_event->set_button_mask(buttons_state);
 
 	subviewport->push_input(mouse_event, true);
 }
 
-void VRWindow::_on_interact_released(const Vector3 &p_position, MouseButton p_button, BitField<MouseButtonMask> p_button_mask) {
+void VRWindow::_on_interact_scrolled(const Vector3 &p_position, const Vector2 p_scroll_delta) {
+	Vector2 mouse_position = _calc_mouse_position(p_position);
+
+	if (p_scroll_delta.y > 0) {
+		_on_scroll_input(mouse_position, MouseButton::WHEEL_UP, p_scroll_delta.y);
+	} else if (p_scroll_delta.y < 0) {
+		_on_scroll_input(mouse_position, MouseButton::WHEEL_DOWN, -p_scroll_delta.y);
+	}
+
+	if (p_scroll_delta.x > 0) {
+		_on_scroll_input(mouse_position, MouseButton::WHEEL_RIGHT, p_scroll_delta.x);
+	} else if (p_scroll_delta.x < 0) {
+		_on_scroll_input(mouse_position, MouseButton::WHEEL_LEFT, -p_scroll_delta.x);
+	}
+}
+
+void VRWindow::_on_scroll_input(const Vector2 &p_position, MouseButton p_wheel_button, float p_delta) {
+	buttons_state.set_flag(mouse_button_to_mask(p_wheel_button));
+	Ref<InputEventMouseButton> scroll_press_event;
+	scroll_press_event.instantiate();
+	scroll_press_event->set_position(p_position);
+	scroll_press_event->set_global_position(p_position);
+	scroll_press_event->set_pressed(true);
+	scroll_press_event->set_button_index(p_wheel_button);
+	scroll_press_event->set_button_mask(buttons_state);
+	scroll_press_event->set_factor(p_delta);
+	subviewport->push_input(scroll_press_event, true);
+
+	buttons_state.clear_flag(mouse_button_to_mask(p_wheel_button));
+	Ref<InputEventMouseButton> scroll_release_event = scroll_press_event->duplicate();
+	scroll_release_event->set_pressed(false);
+	scroll_release_event->set_button_mask(buttons_state);
+	subviewport->push_input(scroll_release_event, true);
+}
+
+void VRWindow::_on_interact_released(const Vector3 &p_position, MouseButton p_button) {
 	// Note, we potentially can have the left and right hand sent mixed signals here
 	// For now we accept that.
+
+	buttons_state.clear_flag(mouse_button_to_mask(p_button));
 
 	Vector2 pos = _calc_mouse_position(p_position);
 
@@ -246,7 +289,7 @@ void VRWindow::_on_interact_released(const Vector3 &p_position, MouseButton p_bu
 	mouse_event->set_pressed(false);
 	mouse_event->set_position(pos);
 	mouse_event->set_global_position(pos);
-	mouse_event->set_button_mask(p_button_mask);
+	mouse_event->set_button_mask(buttons_state);
 
 	subviewport->push_input(mouse_event, true);
 }
@@ -374,6 +417,7 @@ void fragment() {
 	collision->connect("interact_leave", callable_mp(this, &VRWindow::_on_interact_leave));
 	collision->connect("interact_pressed", callable_mp(this, &VRWindow::_on_interact_pressed));
 	collision->connect("interact_released", callable_mp(this, &VRWindow::_on_interact_released));
+	collision->connect("interact_scrolled", callable_mp(this, &VRWindow::_on_interact_scrolled));
 
 	set_process_input(true);
 }

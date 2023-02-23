@@ -74,6 +74,9 @@ private:
 	Vector2 _calc_mouse_position(const Vector3 &p_position);
 
 	VRCollisionWindow *collision = nullptr;
+	BitField<MouseButtonMask> buttons_state;
+
+	void _on_scroll_input(const Vector2 &p_position, MouseButton p_wheel_button, float p_delta);
 
 protected:
 	SubViewport *subviewport = nullptr; // viewport to which we render our content
@@ -85,10 +88,11 @@ protected:
 	virtual void input(const Ref<InputEvent> &p_event) override;
 
 	void _on_interact_enter(const Vector3 &p_position);
-	void _on_interact_moved(const Vector3 &p_position, BitField<MouseButtonMask> p_button_mask, float p_pressure);
+	void _on_interact_moved(const Vector3 &p_position, float p_pressure);
 	void _on_interact_leave(const Vector3 &p_position);
-	void _on_interact_pressed(const Vector3 &p_position, MouseButton p_button, BitField<MouseButtonMask> p_button_mask);
-	void _on_interact_released(const Vector3 &p_position, MouseButton p_button, BitField<MouseButtonMask> p_button_mask);
+	void _on_interact_pressed(const Vector3 &p_position, MouseButton p_button);
+	void _on_interact_scrolled(const Vector3 &p_position, const Vector2 p_scroll_delta);
+	void _on_interact_released(const Vector3 &p_position, MouseButton p_button);
 
 public:
 	SubViewport *get_scene_root() { return subviewport; }

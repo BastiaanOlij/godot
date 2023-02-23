@@ -75,6 +75,7 @@ public:
 	void set_ray_enabled(bool p_enabled);
 	bool get_ray_enabled() const { return ray_enabled; }
 
+	Vector2 get_scroll();
 	bool is_select();
 	bool is_alt_select();
 
