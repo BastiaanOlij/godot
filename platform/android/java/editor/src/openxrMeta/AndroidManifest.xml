@@ -32,6 +32,8 @@
             android:value="org.godotengine.openxrloaders.meta.GodotOpenXRMeta"
             tools:node="remove" />
 
+        <meta-data android:name="com.oculus.ossplash" android:value="true"/>
+
     </application>
 
 </manifest>

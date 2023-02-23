@@ -65,18 +65,25 @@ open class GodotEditor : FullScreenGodotApp() {
 
 		private const val COMMAND_LINE_PARAMS = "command_line_params"
 
-		private const val EDITOR_ID = 777
-		private const val EDITOR_ARG = "--editor"
-		private const val EDITOR_ARG_SHORT = "-e"
-		private const val EDITOR_PROCESS_NAME_SUFFIX = ":GodotEditor"
+		internal const val EDITOR_ARG = "--editor"
+		internal const val EDITOR_ARG_SHORT = "-e"
 
-		private const val GAME_ID = 667
-		private const val GAME_PROCESS_NAME_SUFFIX = ":GodotGame"
+		internal const val PROJECT_MANAGER_ARG = "--project-manager"
+		internal const val PROJECT_MANAGER_ARG_SHORT = "-p"
 
-		private const val PROJECT_MANAGER_ID = 555
-		private const val PROJECT_MANAGER_ARG = "--project-manager"
-		private const val PROJECT_MANAGER_ARG_SHORT = "-p"
-		private const val PROJECT_MANAGER_PROCESS_NAME_SUFFIX = ":GodotProjectManager"
+		private val EDITOR_MAIN_INFO =
+			EditorInstanceInfo(GodotEditor::class.java, 777, ":GodotEditor")
+		private val PROJECT_MANAGER_INFO =
+			EditorInstanceInfo(GodotProjectManager::class.java, 555, ":GodotProjectManager")
+	}
+
+	private val runGameInfo: EditorInstanceInfo by lazy {
+		EditorInstanceInfo(
+			GodotGame::class.java,
+			667,
+			":GodotGame",
+			Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && (isInMultiWindowMode || isLargeScreen)
+		)
 	}
 
 	private val commandLineParams = ArrayList<String>()
@@ -119,99 +126,73 @@ open class GodotEditor : FullScreenGodotApp() {
 
 	final override fun getCommandLine() = commandLineParams
 
-	open fun selectGodotInstanceTargetClass(args: Array<String>): Class<*> {
-		// Parse the arguments to figure out which activity to start.
-		var targetClass: Class<*> = GodotGame::class.java
-
+	protected open fun getEditorInstanceInfo(args: Array<String>): EditorInstanceInfo {
 		for (arg in args) {
 			if (EDITOR_ARG == arg || EDITOR_ARG_SHORT == arg) {
-				targetClass = GodotEditor::class.java
-				break
+				return EDITOR_MAIN_INFO
 			}
 
 			if (PROJECT_MANAGER_ARG == arg || PROJECT_MANAGER_ARG_SHORT == arg) {
-				targetClass = GodotProjectManager::class.java
-				break
+				return PROJECT_MANAGER_INFO
 			}
 		}
 
-		return targetClass
-	}
-
-	open fun shouldLaunchGodotInstanceAdjacent(args: Array<String>): Boolean {
-		// Whether we should launch the new godot instance in an adjacent window
-		// https://developer.android.com/reference/android/content/Intent#FLAG_ACTIVITY_LAUNCH_ADJACENT
-		var launchAdjacent =
-			Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && (isInMultiWindowMode || isLargeScreen)
-
-		for (arg in args) {
-			if (EDITOR_ARG == arg || EDITOR_ARG_SHORT == arg) {
-				launchAdjacent = false
-				break
-			}
-
-			if (PROJECT_MANAGER_ARG == arg || PROJECT_MANAGER_ARG_SHORT == arg) {
-				launchAdjacent = false
-				break
-			}
-		}
-
-		return launchAdjacent
+		return runGameInfo
 	}
 
 	final override fun onNewGodotInstanceRequested(args: Array<String>): Int {
-		val launchAdjacent = shouldLaunchGodotInstanceAdjacent(args)
-		val targetClass = selectGodotInstanceTargetClass(args)
+		val editorInstanceInfo = getEditorInstanceInfo(args)
 
 		// Launch a new activity
-		val newInstance = Intent(this, targetClass)
+		val newInstance = Intent(this, editorInstanceInfo.instanceClass)
 			.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 			.putExtra(COMMAND_LINE_PARAMS, args)
-		if (launchAdjacent) {
+		if (editorInstanceInfo.launchAdjacent && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
 			newInstance.addFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT)
 		}
-		if (targetClass == javaClass) {
-			Log.d(TAG, "Restarting $targetClass")
+		if (editorInstanceInfo.instanceClass == javaClass) {
+			Log.d(TAG, "Restarting ${editorInstanceInfo.instanceClass}")
 			ProcessPhoenix.triggerRebirth(this, newInstance)
 		} else {
-			Log.d(TAG, "Starting $targetClass")
+			Log.d(TAG, "Starting ${editorInstanceInfo.instanceClass}")
 			startActivity(newInstance)
 		}
-		return instanceId
+		return editorInstanceInfo.instanceId
 	}
 
-	override fun onGodotForceQuit(godotInstanceId: Int): Boolean {
-		val processNameSuffix = when (godotInstanceId) {
-			GAME_ID -> {
-				GAME_PROCESS_NAME_SUFFIX
+	protected open fun getProcessNameForInstanceId(instanceId: Int): String {
+		return when (instanceId) {
+			runGameInfo.instanceId -> {
+				runGameInfo.processNameSuffix
 			}
-			EDITOR_ID -> {
-				EDITOR_PROCESS_NAME_SUFFIX
+			EDITOR_MAIN_INFO.instanceId -> {
+				EDITOR_MAIN_INFO.processNameSuffix
 			}
-			PROJECT_MANAGER_ID -> {
-				PROJECT_MANAGER_PROCESS_NAME_SUFFIX
+			PROJECT_MANAGER_INFO.instanceId -> {
+				PROJECT_MANAGER_INFO.processNameSuffix
 			}
 			else -> ""
 		}
-		if (processNameSuffix.isBlank()) {
-			return false
-		}
+	}
 
-		val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-		val runningProcesses = activityManager.runningAppProcesses
-		for (runningProcess in runningProcesses) {
-			if (runningProcess.processName.endsWith(processNameSuffix)) {
-				Log.v(TAG, "Killing Godot process ${runningProcess.processName}")
-				Process.killProcess(runningProcess.pid)
-				return true
+	final override fun onGodotForceQuit(godotInstanceId: Int): Boolean {
+		val processNameSuffix = getProcessNameForInstanceId(godotInstanceId)
+		if (processNameSuffix.isNotBlank()) {
+			val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+			val runningProcesses = activityManager.runningAppProcesses
+			for (runningProcess in runningProcesses) {
+				if (runningProcess.processName.endsWith(processNameSuffix)) {
+					Log.v(TAG, "Killing Godot process ${runningProcess.processName}")
+					Process.killProcess(runningProcess.pid)
+					return true
+				}
 			}
 		}
-
-		return false
+		return super.onGodotForceQuit(godotInstanceId)
 	}
 
 	// Get the screen's density scale
-	protected val isLargeScreen: Boolean
+	private val isLargeScreen: Boolean
 		// Get the minimum window size // Correspond to the EXPANDED window size class.
 		get() {
 			val metrics = WindowMetricsCalculator.getOrCreate().computeMaximumWindowMetrics(this)
