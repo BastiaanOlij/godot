@@ -49,6 +49,7 @@ void VRPoke::_notification(int p_notification) {
 			float col_distance = 0.0;
 			bool col_is_pressed[2] = { false, false };
 			float col_pressure[2] = { 0.0, 0.0 };
+			Vector2 col_scroll;
 
 			if (touch_enabled || ray_enabled) {
 				Transform3D poke_transform = get_global_transform();
@@ -65,6 +66,7 @@ void VRPoke::_notification(int p_notification) {
 					float test_distance = 9999.99;
 					bool test_is_pressed[2] = { false, false };
 					float test_pressure[2] = { 0.0, 0.0 };
+					Vector2 test_scroll;
 
 					if (touch_enabled && test_collision->within_sphere(poke_position, radius, test_position)) {
 						// only simulate one button when we're touching
@@ -77,6 +79,7 @@ void VRPoke::_notification(int p_notification) {
 							test_is_pressed[j] = poke_is_pressed[j];
 							test_pressure[j] = poke_is_pressed[j] ? 1.0 : 0.0;
 						}
+						test_scroll = get_scroll();
 					} else {
 						test_collision = nullptr;
 					}
@@ -86,6 +89,7 @@ void VRPoke::_notification(int p_notification) {
 						collision = test_collision;
 						col_position = test_position;
 						col_distance = test_distance;
+						col_scroll = test_scroll;
 						for (int j = 0; j < 2; j++) {
 							col_is_pressed[j] = test_is_pressed[j];
 							col_pressure[j] = test_pressure[j];
@@ -98,11 +102,11 @@ void VRPoke::_notification(int p_notification) {
 			if (last_collision && last_collision != collision) {
 				// Might want to leave first and forego on the releases?
 				if (last_was_pressed[1]) {
-					last_collision->_on_interact_released(last_position, MouseButton::RIGHT, last_was_pressed[0] ? MouseButtonMask::LEFT : MouseButtonMask(0));
+					last_collision->_on_interact_released(last_position, MouseButton::RIGHT);
 					last_was_pressed[1] = false;
 				}
 				if (last_was_pressed[0]) {
-					last_collision->_on_interact_released(last_position, MouseButton::LEFT, MouseButtonMask(0));
+					last_collision->_on_interact_released(last_position, MouseButton::LEFT);
 					last_was_pressed[0] = false;
 				}
 				last_collision->_on_interact_leave(last_position);
@@ -116,43 +120,31 @@ void VRPoke::_notification(int p_notification) {
 				_set_ray_visible_length(Math::sqrt(col_distance));
 				material->set_albedo(touch_color);
 
-				int button_mask = 0;
 				if (last_collision != collision) {
 					last_collision = collision;
 					last_position = col_position; // We don't want to trigger a move event here.
 					collision->_on_interact_enter(col_position);
-				} else {
-					// reconstruct our old button mask
-					for (int i = 0; i < 2; i++) {
-						if (last_was_pressed[i]) {
-							button_mask |= 1 << i;
-						}
-					}
-				};
+				}
 
 				for (int i = 0; i < 2; i++) {
-					int mask = (1 << i);
-					if (col_is_pressed[i]) {
-						button_mask |= mask;
-					} else {
-						button_mask &= ~(1 << i);
-					}
-
 					if (col_is_pressed[i] && !last_was_pressed[i]) {
-						collision->_on_interact_pressed(col_position, MouseButton(i + 1), MouseButtonMask(button_mask));
+						collision->_on_interact_pressed(col_position, MouseButton(i + 1));
 					} else if (!col_is_pressed[i] && last_was_pressed[i]) {
-						collision->_on_interact_released(col_position, MouseButton(i + 1), MouseButtonMask(button_mask));
+						collision->_on_interact_released(col_position, MouseButton(i + 1));
 					}
 				}
 
 				if (last_position != col_position) {
-					collision->_on_interact_moved(col_position, MouseButtonMask(button_mask), col_pressure[0]);
+					collision->_on_interact_moved(col_position, col_pressure[0]);
 				}
 
 				last_position = col_position;
 				for (int i = 0; i < 2; i++) {
 					last_was_pressed[i] = col_is_pressed[i];
 				}
+
+				// Forward scroll values
+				collision->_on_interact_scrolled(col_position, col_scroll);
 			} else {
 				material->set_albedo(normal_color);
 				_set_ray_visible_length(5.0);
@@ -178,6 +170,13 @@ void VRPoke::set_ray_enabled(bool p_enabled) {
 	if (cast) {
 		cast->set_visible(ray_enabled);
 	}
+}
+
+Vector2 VRPoke::get_scroll() {
+	XRController3D *controller = Object::cast_to<XRController3D>(get_parent());
+	ERR_FAIL_NULL_V(controller, Vector2());
+
+	return controller->get_vector2("scroll");
 }
 
 bool VRPoke::is_select() {
