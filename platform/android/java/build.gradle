@@ -222,72 +222,98 @@ def isAndroidStudio() {
 
 task copyEditorReleaseApkToBin(type: Copy) {
     dependsOn ':editor:assembleRelease'
-    from('editor/build/outputs/apk/release')
+
+    from('editor/build/outputs/apk/pancakeGoogle/release')
     into(androidEditorBuildsDir)
-    include('android_editor-release*.apk')
-}
+    include('android_editor-pancake-google-release*.apk')
 
-task copyEditorDebugBinaryToBin(type: Copy) {
-    dependsOn ':editor:assembleDebug'
+    from('editor/build/outputs/apk/openxrMeta/release')
+    into(androidEditorBuildsDir)
+    include('android_editor-openxr-meta-release*.apk')
 
-    from('editor/build/outputs/apk/pancakeGoogle/debug')
-    into(binDir)
-    include('android_editor.apk')
-
-    from('editor/build/outputs/apk/openxrMeta/debug')
-    into(binDir)
-    include('android_editor_openxr_meta.apk')
-
-    from('editor/build/outputs/apk/openxrPico/debug')
-    into(binDir)
-    include('android_editor_openxr_pico.apk')
+    from('editor/build/outputs/apk/openxrPico/release')
+    into(androidEditorBuildsDir)
+    include('android_editor-openxr-pico-release*.apk')
 }
 
 task copyEditorReleaseAabToBin(type: Copy) {
     dependsOn ':editor:bundleRelease'
-    from('editor/build/outputs/bundle/release')
+
+    from('editor/build/outputs/bundle/pancakeGoogleRelease')
     into(androidEditorBuildsDir)
-    include('android_editor-release*.aab')
+    include('android_editor-pancake-google-release*.aab')
+
+    from('editor/build/outputs/bundle/openxrMetaRelease')
+    into(androidEditorBuildsDir)
+    include('android_editor-openxr-meta-release*.aab')
+
+    from('editor/build/outputs/bundle/openxrPicoRelease')
+    into(androidEditorBuildsDir)
+    include('android_editor-openxr-pico-release*.aab')
 }
 
 task copyEditorDebugApkToBin(type: Copy) {
     dependsOn ':editor:assembleDebug'
-    from('editor/build/outputs/apk/debug')
+
+    from('editor/build/outputs/apk/pancakeGoogle/debug')
     into(androidEditorBuildsDir)
-    include('android_editor-debug.apk')
+    include('android_editor-pancake-google-debug.apk')
+
+    from('editor/build/outputs/apk/openxrMeta/debug')
+    into(androidEditorBuildsDir)
+    include('android_editor-openxr-meta-debug.apk')
+
+    from('editor/build/outputs/apk/openxrPico/debug')
+    into(androidEditorBuildsDir)
+    include('android_editor-openxr-pico-debug.apk')
 }
 
 task copyEditorDebugAabToBin(type: Copy) {
     dependsOn ':editor:bundleDebug'
-    from('editor/build/outputs/bundle/debug')
+
+    from('editor/build/outputs/bundle/pancakeGoogleDebug')
     into(androidEditorBuildsDir)
-    include('android_editor-debug.aab')
+    include('android_editor-pancake-google-debug.aab')
+
+    from('editor/build/outputs/bundle/openxrMetaDebug')
+    into(androidEditorBuildsDir)
+    include('android_editor-openxr-meta-debug.aab')
+
+    from('editor/build/outputs/bundle/openxrPicoDebug')
+    into(androidEditorBuildsDir)
+    include('android_editor-openxr-pico-debug.aab')
 }
 
 task copyEditorDevApkToBin(type: Copy) {
     dependsOn ':editor:assembleDev'
-    from('editor/build/outputs/apk/dev')
-    into(androidEditorBuildsDir)
-    include('android_editor-dev.apk')
 
     from('editor/build/outputs/apk/pancakeGoogle/dev')
-    into(binDir)
-    include('android_editor_dev.apk')
+    into(androidEditorBuildsDir)
+    include('android_editor-pancake-google-dev.apk')
 
     from('editor/build/outputs/apk/openxrMeta/dev')
-    into(binDir)
-    include('android_editor_openxr_meta_dev.apk')
+    into(androidEditorBuildsDir)
+    include('android_editor-openxr-meta-dev.apk')
 
     from('editor/build/outputs/apk/openxrPico/dev')
-    into(binDir)
-    include('android_editor_openxr_pico_dev.apk')
+    into(androidEditorBuildsDir)
+    include('android_editor-openxr-pico-dev.apk')
 }
 
 task copyEditorDevAabToBin(type: Copy) {
     dependsOn ':editor:bundleDev'
-    from('editor/build/outputs/bundle/dev')
+
+    from('editor/build/outputs/bundle/pancakeGoogleDev')
     into(androidEditorBuildsDir)
-    include('android_editor-dev.aab')
+    include('android_editor-pancake-google-dev.aab')
+
+    from('editor/build/outputs/bundle/openxrMetaDev')
+    into(androidEditorBuildsDir)
+    include('android_editor-openxr-meta-dev.aab')
+
+    from('editor/build/outputs/bundle/openxrPicoDev')
+    into(androidEditorBuildsDir)
+    include('android_editor-openxr-pico-dev.aab')
 }
 
 /**
@@ -362,14 +388,6 @@ task cleanGodotEditor(type: Delete) {
 
     // Delete the Godot editor apks & aabs in the Godot bin directory
     delete(androidEditorBuildsDir)
-
-    // Delete the Godot editor apks in the Godot bin directory
-    delete("$binDir/android_editor.apk")
-    delete("$binDir/android_editor_dev.apk")
-    delete("$binDir/android_editor_openxr_meta.apk")
-    delete("$binDir/android_editor_openxr_meta_dev.apk")
-    delete("$binDir/android_editor_openxr_pico.apk")
-    delete("$binDir/android_editor_openxr_pico_dev.apk")
 }
 
 /**

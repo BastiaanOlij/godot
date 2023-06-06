@@ -122,7 +122,7 @@ android {
         }
     }
 
-    flavorDimensions "xrMode", "xrRuntime"
+    flavorDimensions = ["xrMode", "xrRuntime"]
     productFlavors {
         pancake {
             dimension "xrMode"
@@ -130,6 +130,7 @@ android {
         openxr {
             dimension "xrMode"
             ndk {
+                //noinspection ChromeOsAbiSupport
                 abiFilters "arm64-v8a"
             }
             applicationIdSuffix ".openxr"
@@ -159,13 +160,6 @@ android {
     }
 
     variantFilter { variant ->
-        // Disable 'release' buildtype.
-        // The editor can't be used with target=release only, as debugging tools are then not
-        // included, and it would crash on errors instead of reporting them.
-        if (variant.buildType.name == "release") {
-            setIgnore(true)
-        }
-
         // Disable invalid flavors combinations
         def names = variant.flavors*.name
         if (names.contains("pancake")) {
@@ -175,34 +169,6 @@ android {
         }
         if (names.contains("openxr") && names.contains("google")) {
             setIgnore(true)
-        }
-    }
-
-    applicationVariants.all { variant ->
-        variant.outputs.all { output ->
-            def suffix = ""
-            switch (variant.name) {
-                case "openxrMetaDev":
-                    suffix = "_openxr_meta_dev"
-                    break
-                case "openxrMetaDebug":
-                    suffix = "_openxr_meta"
-                    break
-                case "openxrPicoDev":
-                    suffix = "_openxr_pico_dev"
-                    break
-                case "openxrPicoDebug":
-                    suffix = "_openxr_pico"
-                    break
-                case "pancakeGoogleDev":
-                    suffix = "_dev"
-                    break
-                case "pancakeGoogleDebug":
-                default:
-                    suffix = ""
-                    break
-            }
-            output.outputFileName = "android_editor${suffix}.apk"
         }
     }
 }

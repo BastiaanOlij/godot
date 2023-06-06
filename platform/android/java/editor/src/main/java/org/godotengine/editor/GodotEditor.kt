@@ -134,7 +134,7 @@ open class GodotEditor : FullScreenGodotApp() {
 	protected open fun updateCommandLineParams(args: Array<String>?) {
 		// Update the list of command line params with the new args
 		commandLineParams.clear()
-		if (args != null && args.isNotEmpty()) {
+		if (!args.isNullOrEmpty()) {
 			commandLineParams.addAll(listOf(*args))
 		}
 		if (BuildConfig.BUILD_TYPE == "dev") {
