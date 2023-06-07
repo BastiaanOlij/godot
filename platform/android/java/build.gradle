@@ -230,10 +230,6 @@ task copyEditorReleaseApkToBin(type: Copy) {
     from('editor/build/outputs/apk/openxrMeta/release')
     into(androidEditorBuildsDir)
     include('android_editor-openxr-meta-release*.apk')
-
-    from('editor/build/outputs/apk/openxrPico/release')
-    into(androidEditorBuildsDir)
-    include('android_editor-openxr-pico-release*.apk')
 }
 
 task copyEditorReleaseAabToBin(type: Copy) {
@@ -246,10 +242,6 @@ task copyEditorReleaseAabToBin(type: Copy) {
     from('editor/build/outputs/bundle/openxrMetaRelease')
     into(androidEditorBuildsDir)
     include('android_editor-openxr-meta-release*.aab')
-
-    from('editor/build/outputs/bundle/openxrPicoRelease')
-    into(androidEditorBuildsDir)
-    include('android_editor-openxr-pico-release*.aab')
 }
 
 task copyEditorDebugApkToBin(type: Copy) {
@@ -262,10 +254,6 @@ task copyEditorDebugApkToBin(type: Copy) {
     from('editor/build/outputs/apk/openxrMeta/debug')
     into(androidEditorBuildsDir)
     include('android_editor-openxr-meta-debug.apk')
-
-    from('editor/build/outputs/apk/openxrPico/debug')
-    into(androidEditorBuildsDir)
-    include('android_editor-openxr-pico-debug.apk')
 }
 
 task copyEditorDebugAabToBin(type: Copy) {
@@ -278,10 +266,6 @@ task copyEditorDebugAabToBin(type: Copy) {
     from('editor/build/outputs/bundle/openxrMetaDebug')
     into(androidEditorBuildsDir)
     include('android_editor-openxr-meta-debug.aab')
-
-    from('editor/build/outputs/bundle/openxrPicoDebug')
-    into(androidEditorBuildsDir)
-    include('android_editor-openxr-pico-debug.aab')
 }
 
 task copyEditorDevApkToBin(type: Copy) {
@@ -294,10 +278,6 @@ task copyEditorDevApkToBin(type: Copy) {
     from('editor/build/outputs/apk/openxrMeta/dev')
     into(androidEditorBuildsDir)
     include('android_editor-openxr-meta-dev.apk')
-
-    from('editor/build/outputs/apk/openxrPico/dev')
-    into(androidEditorBuildsDir)
-    include('android_editor-openxr-pico-dev.apk')
 }
 
 task copyEditorDevAabToBin(type: Copy) {
@@ -310,10 +290,6 @@ task copyEditorDevAabToBin(type: Copy) {
     from('editor/build/outputs/bundle/openxrMetaDev')
     into(androidEditorBuildsDir)
     include('android_editor-openxr-meta-dev.aab')
-
-    from('editor/build/outputs/bundle/openxrPicoDev')
-    into(androidEditorBuildsDir)
-    include('android_editor-openxr-pico-dev.aab')
 }
 
 /**

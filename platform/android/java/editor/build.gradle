@@ -145,11 +145,6 @@ android {
             applicationIdSuffix ".meta"
             versionNameSuffix "-meta"
         }
-        pico {
-            dimension "xrRuntime"
-            applicationIdSuffix ".pico"
-            versionNameSuffix "-pico"
-        }
     }
 
     packagingOptions {
@@ -163,7 +158,7 @@ android {
         // Disable invalid flavors combinations
         def names = variant.flavors*.name
         if (names.contains("pancake")) {
-            if (names.contains("meta") || names.contains("pico")) {
+            if (names.contains("meta")) {
                 setIgnore(true)
             }
         }
@@ -175,7 +170,6 @@ android {
 
 configurations {
     openxrMetaImplementation {}
-    openxrPicoImplementation {}
 }
 
 dependencies {
@@ -187,7 +181,4 @@ dependencies {
 
     // Meta OpenXR dependencies
     openxrMetaImplementation "org.godotengine:godot-openxr-loaders-meta:1.0.0"
-
-    // Pico OpenXR dependencies
-    openxrPicoImplementation "org.godotengine:godot-openxr-loaders-pico:1.0.0"
 }
