@@ -9,6 +9,7 @@
             android:process=":GodotXRProjectManager"
             android:launchMode="singleTask"
             android:exported="true"
+            android:label="@string/godot_xr_editor_name_string"
             android:screenOrientation="userLandscape"
             android:resizeableActivity="false"
             android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen">
@@ -26,6 +27,7 @@
             android:process=":GodotXREditor"
             android:launchMode="singleTask"
             android:exported="false"
+            android:label="@string/godot_xr_editor_name_string"
             android:screenOrientation="userLandscape"
             android:resizeableActivity="false"
             android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen">
@@ -40,6 +42,7 @@
             android:process=":GodotXRGame"
             android:launchMode="singleTask"
             android:exported="false"
+            android:label="@string/godot_xr_editor_name_string"
             android:screenOrientation="userLandscape"
             android:resizeableActivity="false"
             android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen">
