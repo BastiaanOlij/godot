@@ -32,6 +32,7 @@ package org.godotengine.editor
 
 import android.Manifest
 import android.app.ActivityManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -65,16 +66,27 @@ open class GodotEditor : FullScreenGodotApp() {
 
 		private const val COMMAND_LINE_PARAMS = "command_line_params"
 
-		internal const val EDITOR_ARG = "--editor"
-		internal const val EDITOR_ARG_SHORT = "-e"
+		// Command line arguments
+		private const val EDITOR_ARG = "--editor"
+		private const val EDITOR_ARG_SHORT = "-e"
 
-		internal const val PROJECT_MANAGER_ARG = "--project-manager"
-		internal const val PROJECT_MANAGER_ARG_SHORT = "-p"
+		private const val PROJECT_MANAGER_ARG = "--project-manager"
+		private const val PROJECT_MANAGER_ARG_SHORT = "-p"
 
+		internal const val XR_MODE_ARG = "--xr-mode"
+
+		// Info for the various classes used by the editor
 		private val EDITOR_MAIN_INFO =
 			EditorInstanceInfo(GodotEditor::class.java, 777, ":GodotEditor")
-		private val PROJECT_MANAGER_INFO =
+		internal val PROJECT_MANAGER_INFO =
 			EditorInstanceInfo(GodotProjectManager::class.java, 555, ":GodotProjectManager")
+		// The classes referenced below are only available on openxr builds of the editor.
+		private val XR_EDITOR_MAIN_INFO =
+				EditorInstanceInfo("org.godotengine.editor.GodotXREditor", 1777, ":GodotXREditor")
+		private val XR_PROJECT_MANAGER_INFO =
+				EditorInstanceInfo("org.godotengine.editor.GodotXRProjectManager", 1555, ":GodotXRProjectManager")
+		private val XR_RUN_GAME_INFO =
+				EditorInstanceInfo("org.godotengine.editor.GodotXRGame", 1667, ":GodotXRGame")
 	}
 
 	private val runGameInfo: EditorInstanceInfo by lazy {
@@ -94,7 +106,7 @@ open class GodotEditor : FullScreenGodotApp() {
 		PermissionsUtil.requestManifestPermissions(this, setOf(Manifest.permission.RECORD_AUDIO))
 
 		val params = intent.getStringArrayExtra(COMMAND_LINE_PARAMS)
-		updateCommandLineParams(params)
+		updateCommandLineParams(params?.asList() ?: emptyList())
 
 		if (BuildConfig.BUILD_TYPE == "dev" && WAIT_FOR_DEBUGGER) {
 			Debug.waitForDebugger()
@@ -131,11 +143,11 @@ open class GodotEditor : FullScreenGodotApp() {
 	}
 
 	@CallSuper
-	protected open fun updateCommandLineParams(args: Array<String>?) {
+	protected open fun updateCommandLineParams(args: List<String>) {
 		// Update the list of command line params with the new args
 		commandLineParams.clear()
-		if (!args.isNullOrEmpty()) {
-			commandLineParams.addAll(listOf(*args))
+		if (args.isNotEmpty()) {
+			commandLineParams.addAll(args)
 		}
 		if (BuildConfig.BUILD_TYPE == "dev") {
 			commandLineParams.add("--benchmark")
@@ -144,51 +156,76 @@ open class GodotEditor : FullScreenGodotApp() {
 
 	final override fun getCommandLine() = commandLineParams
 
-	protected open fun getEditorInstanceInfo(args: Array<String>): EditorInstanceInfo {
-		for (arg in args) {
-			if (EDITOR_ARG == arg || EDITOR_ARG_SHORT == arg) {
-				return EDITOR_MAIN_INFO
-			}
+	private fun isXrAvailable() = BuildConfig.XR_MODE
 
-			if (PROJECT_MANAGER_ARG == arg || PROJECT_MANAGER_ARG_SHORT == arg) {
-				return PROJECT_MANAGER_INFO
+	private fun getEditorInstanceInfo(args: Array<String>): EditorInstanceInfo {
+		var hasEditor = false
+		var hasProjectManager = false
+		var launchInXr = false
+		var i = 0
+		while (i < args.size) {
+			when (args[i++]) {
+				EDITOR_ARG, EDITOR_ARG_SHORT -> hasEditor = true
+				PROJECT_MANAGER_ARG, PROJECT_MANAGER_ARG_SHORT -> hasProjectManager = true
+				XR_MODE_ARG -> {
+					val argValue = args[i++]
+					launchInXr = isXrAvailable() && ("on" == argValue)
+				}
 			}
 		}
 
-		return runGameInfo
+		return if (hasEditor) {
+			if (launchInXr) {
+				XR_EDITOR_MAIN_INFO
+			} else {
+				EDITOR_MAIN_INFO
+			}
+		} else if (hasProjectManager) {
+			if (launchInXr) {
+				XR_PROJECT_MANAGER_INFO
+			} else {
+				PROJECT_MANAGER_INFO
+			}
+		} else {
+			if (launchInXr) {
+				XR_RUN_GAME_INFO
+			} else {
+				runGameInfo
+			}
+		}
 	}
 
 	final override fun onNewGodotInstanceRequested(args: Array<String>): Int {
 		val editorInstanceInfo = getEditorInstanceInfo(args)
 
 		// Launch a new activity
-		val newInstance = Intent(this, editorInstanceInfo.instanceClass)
+		val newInstance = Intent()
+			.setComponent(ComponentName(this, editorInstanceInfo.instanceClassName))
 			.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 			.putExtra(COMMAND_LINE_PARAMS, args)
 		if (editorInstanceInfo.launchAdjacent && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
 			newInstance.addFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT)
 		}
-		if (editorInstanceInfo.instanceClass == javaClass) {
-			Log.d(TAG, "Restarting ${editorInstanceInfo.instanceClass}")
+		if (editorInstanceInfo.instanceClassName == javaClass.name) {
+			Log.d(TAG, "Restarting ${editorInstanceInfo.instanceClassName}")
 			ProcessPhoenix.triggerRebirth(this, newInstance)
 		} else {
-			Log.d(TAG, "Starting ${editorInstanceInfo.instanceClass}")
+			Log.d(TAG, "Starting ${editorInstanceInfo.instanceClassName}")
 			startActivity(newInstance)
 		}
 		return editorInstanceInfo.instanceId
 	}
 
-	protected open fun getProcessNameForInstanceId(instanceId: Int): String {
+	private fun getProcessNameForInstanceId(instanceId: Int): String {
 		return when (instanceId) {
-			runGameInfo.instanceId -> {
-				runGameInfo.processNameSuffix
-			}
-			EDITOR_MAIN_INFO.instanceId -> {
-				EDITOR_MAIN_INFO.processNameSuffix
-			}
-			PROJECT_MANAGER_INFO.instanceId -> {
-				PROJECT_MANAGER_INFO.processNameSuffix
-			}
+			runGameInfo.instanceId -> runGameInfo.processNameSuffix
+			EDITOR_MAIN_INFO.instanceId -> EDITOR_MAIN_INFO.processNameSuffix
+			PROJECT_MANAGER_INFO.instanceId -> PROJECT_MANAGER_INFO.processNameSuffix
+
+			XR_RUN_GAME_INFO.instanceId -> XR_RUN_GAME_INFO.processNameSuffix
+			XR_EDITOR_MAIN_INFO.instanceId -> XR_EDITOR_MAIN_INFO.processNameSuffix
+			XR_PROJECT_MANAGER_INFO.instanceId -> XR_PROJECT_MANAGER_INFO.processNameSuffix
+
 			else -> ""
 		}
 	}

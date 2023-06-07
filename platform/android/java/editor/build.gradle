@@ -126,6 +126,8 @@ android {
     productFlavors {
         pancake {
             dimension "xrMode"
+            missingDimensionStrategy 'products', 'editor'
+            buildConfigField('boolean', 'XR_MODE', 'false')
         }
         openxr {
             dimension "xrMode"
@@ -135,6 +137,8 @@ android {
             }
             applicationIdSuffix ".openxr"
             versionNameSuffix "-openxr"
+            missingDimensionStrategy 'products', 'xr_editor'
+            buildConfigField('boolean', 'XR_MODE', 'true')
         }
 
         google {

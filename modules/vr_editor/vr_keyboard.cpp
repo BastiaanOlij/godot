@@ -76,7 +76,7 @@ void VRKeyboard::_on_key_up(String p_scan_code_text, int p_unicode) {
 }
 
 void VRKeyboard::_toggle_shift() {
-	// Our shift realy works like a caps lock seeing we don't support multitouch well enough,
+	// Our shift really works like a caps lock seeing we don't support multitouch well enough,
 	// could probably change that by using touch buttons...
 	// and then add caps in here as well.. TODO I guess
 	ERR_FAIL_NULL(shift_button);

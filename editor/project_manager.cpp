@@ -62,6 +62,7 @@
 #include "servers/display_server.h"
 #include "servers/navigation_server_3d.h"
 #include "servers/physics_server_2d.h"
+#include "servers/xr_server.h"
 
 constexpr int GODOT4_CONFIG_VERSION = 5;
 
@@ -1925,6 +1926,9 @@ void ProjectManager::_notification(int p_what) {
 			import_btn->set_icon(get_theme_icon(SNAME("Load"), SNAME("EditorIcons")));
 			scan_btn->set_icon(get_theme_icon(SNAME("Search"), SNAME("EditorIcons")));
 			open_btn->set_icon(get_theme_icon(SNAME("Edit"), SNAME("EditorIcons")));
+#if defined(MODULE_VR_EDITOR_ENABLED)
+			open_in_xr_btn->set_icon(get_theme_icon(SNAME("Edit"), SNAME("EditorIcons")));
+#endif
 			run_btn->set_icon(get_theme_icon(SNAME("Play"), SNAME("EditorIcons")));
 			rename_btn->set_icon(get_theme_icon(SNAME("Rename"), SNAME("EditorIcons")));
 			manage_tags_btn->set_icon(get_theme_icon("Script", "EditorIcons"));
@@ -1939,6 +1943,9 @@ void ProjectManager::_notification(int p_what) {
 			import_btn->add_theme_constant_override("h_separation", get_theme_constant(SNAME("sidebar_button_icon_separation"), SNAME("ProjectManager")));
 			scan_btn->add_theme_constant_override("h_separation", get_theme_constant(SNAME("sidebar_button_icon_separation"), SNAME("ProjectManager")));
 			open_btn->add_theme_constant_override("h_separation", get_theme_constant(SNAME("sidebar_button_icon_separation"), SNAME("ProjectManager")));
+#if defined(MODULE_VR_EDITOR_ENABLED)
+			open_in_xr_btn->add_theme_constant_override("h_separation", get_theme_constant(SNAME("sidebar_button_icon_separation"), SNAME("ProjectManager")));
+#endif
 			run_btn->add_theme_constant_override("h_separation", get_theme_constant(SNAME("sidebar_button_icon_separation"), SNAME("ProjectManager")));
 			rename_btn->add_theme_constant_override("h_separation", get_theme_constant(SNAME("sidebar_button_icon_separation"), SNAME("ProjectManager")));
 			manage_tags_btn->add_theme_constant_override("h_separation", get_theme_constant(SNAME("sidebar_button_icon_separation"), SNAME("ProjectManager")));
@@ -2054,6 +2061,9 @@ void ProjectManager::_update_project_buttons() {
 
 	erase_btn->set_disabled(empty_selection);
 	open_btn->set_disabled(empty_selection || is_missing_project_selected);
+#if defined(MODULE_VR_EDITOR_ENABLED)
+	open_in_xr_btn->set_disabled(empty_selection || is_missing_project_selected || selected_projects.size() > 1);
+#endif
 	rename_btn->set_disabled(empty_selection || is_missing_project_selected);
 	manage_tags_btn->set_disabled(empty_selection || is_missing_project_selected || selected_projects.size() > 1);
 	run_btn->set_disabled(empty_selection || is_missing_project_selected);
@@ -2216,6 +2226,12 @@ void ProjectManager::_open_selected_projects() {
 		args.push_back(path);
 
 		args.push_back("--editor");
+#if defined(MODULE_VR_EDITOR_ENABLED)
+		if (_open_in_xr) {
+			args.push_back("--xr-mode");
+			args.push_back("on");
+		}
+#endif
 
 		Error err = OS::get_singleton()->create_instance(args);
 		ERR_FAIL_COND(err);
@@ -2227,7 +2243,10 @@ void ProjectManager::_open_selected_projects() {
 	get_tree()->quit();
 }
 
-void ProjectManager::_open_selected_projects_ask() {
+void ProjectManager::_open_selected_projects_ask(bool p_open_in_xr) {
+#if defined(MODULE_VR_EDITOR_ENABLED)
+	_open_in_xr = p_open_in_xr;
+#endif
 	const HashSet<String> &selected_list = _project_list->get_selected_project_keys();
 
 	if (selected_list.size() < 1) {
@@ -2237,6 +2256,9 @@ void ProjectManager::_open_selected_projects_ask() {
 	const Size2i popup_min_size = Size2i(600.0 * EDSCALE, 0);
 
 	if (selected_list.size() > 1) {
+		if (p_open_in_xr) {
+			return;
+		}
 		multi_open_ask->set_text(vformat(TTR("You requested to open %d projects in parallel. Do you confirm?\nNote that usual checks for engine version compatibility will be bypassed."), selected_list.size()));
 		multi_open_ask->popup_centered(popup_min_size);
 		return;
@@ -2881,7 +2903,7 @@ ProjectManager::ProjectManager() {
 
 		_project_list = memnew(ProjectList);
 		_project_list->connect(ProjectList::SIGNAL_SELECTION_CHANGED, callable_mp(this, &ProjectManager::_update_project_buttons));
-		_project_list->connect(ProjectList::SIGNAL_PROJECT_ASK_OPEN, callable_mp(this, &ProjectManager::_open_selected_projects_ask));
+		_project_list->connect(ProjectList::SIGNAL_PROJECT_ASK_OPEN, callable_mp(this, &ProjectManager::_open_selected_projects_ask).bind(false));
 		_project_list->set_horizontal_scroll_mode(ScrollContainer::SCROLL_MODE_DISABLED);
 		search_panel->add_child(_project_list);
 	}
@@ -2915,8 +2937,16 @@ ProjectManager::ProjectManager() {
 		open_btn = memnew(Button);
 		open_btn->set_text(TTR("Edit"));
 		open_btn->set_shortcut(ED_SHORTCUT("project_manager/edit_project", TTR("Edit Project"), KeyModifierMask::CMD_OR_CTRL | Key::E));
-		open_btn->connect("pressed", callable_mp(this, &ProjectManager::_open_selected_projects_ask));
+		open_btn->connect("pressed", callable_mp(this, &ProjectManager::_open_selected_projects_ask).bind(false));
 		tree_vb->add_child(open_btn);
+
+#if defined(MODULE_VR_EDITOR_ENABLED)
+		open_in_xr_btn = memnew(Button);
+		open_in_xr_btn->set_text(TTR("Edit in XR"));
+		open_in_xr_btn->connect("pressed", callable_mp(this, &ProjectManager::_open_selected_projects_ask).bind(true));
+		open_in_xr_btn->set_visible(XRServer::get_xr_mode() != XRServer::XRMODE_ON);
+		tree_vb->add_child(open_in_xr_btn);
+#endif
 
 		run_btn = memnew(Button);
 		run_btn->set_text(TTR("Run"));
