@@ -4121,7 +4121,8 @@ void RenderingDevice::draw_list_draw(DrawListID p_list, bool p_use_indices, uint
 		if (dl->state.sets[i].pipeline_expected_format == 0) {
 			continue; // Nothing expected by this pipeline.
 		}
-		if (!dl->state.sets[i].bound) {
+		// if (!dl->state.sets[i].bound) {
+		if (true) {
 			// All good, see if this requires re-binding.
 			draw_graph.add_draw_list_bind_uniform_set(dl->state.pipeline_shader_driver_id, dl->state.sets[i].uniform_set_driver_id, i);
 

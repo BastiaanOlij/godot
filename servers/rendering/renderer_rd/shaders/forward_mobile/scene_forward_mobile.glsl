@@ -716,6 +716,13 @@ vec4 fog_process(vec3 vertex) {
 
 #endif //!MODE_RENDER DEPTH
 
+vec3 linear_to_srgb(vec3 color) {
+	//if going to srgb, clamp from 0 to 1.
+	color = clamp(color, vec3(0.0), vec3(1.0));
+	const vec3 a = vec3(0.055f);
+	return mix((vec3(1.0f) + a) * pow(color.rgb, vec3(1.0f / 2.4f)) - a, 12.92f * color.rgb, lessThan(color.rgb, vec3(0.0031308f)));
+}
+
 #define scene_data scene_data_block.data
 
 void main() {
@@ -1852,6 +1859,8 @@ void main() {
 #ifdef PREMUL_ALPHA_USED
 	frag_color.rgb *= premul_alpha;
 #endif
+
+	frag_color.rgb = linear_to_srgb(frag_color.rgb); // Regular linear -> SRGB conversion.
 
 #endif //MODE_MULTIPLE_RENDER_TARGETS
 

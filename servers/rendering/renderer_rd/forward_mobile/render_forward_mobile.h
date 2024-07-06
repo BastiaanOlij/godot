@@ -107,13 +107,7 @@ private:
 		GDCLASS(RenderBufferDataForwardMobile, RenderBufferCustomDataRD);
 
 	public:
-		enum FramebufferConfigType {
-			FB_CONFIG_RENDER_PASS, // Single pass framebuffer for normal rendering.
-			FB_CONFIG_RENDER_AND_POST_PASS, // Two subpasses, one for normal rendering, one for post processing.
-			FB_CONFIG_MAX
-		};
-
-		RID get_color_fbs(FramebufferConfigType p_config_type);
+		RID get_color_fbs();
 		virtual void free_data() override;
 		virtual void configure(RenderSceneBuffersRD *p_render_buffers) override;
 
