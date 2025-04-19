@@ -10290,13 +10290,14 @@ String ShaderLanguage::get_shader_type(const String &p_code) {
 }
 
 String ShaderLanguage::get_shader_template(const String &p_code) {
-	int start_pos = p_code.find("shader_template ");
+	constexpr char shader_template_prefix[] = "shader_template ";
+	int start_pos = p_code.find(shader_template_prefix);
 	if (start_pos == -1) {
 		// No shader template specified, this is ok.
 		return String();
 	}
 
-	start_pos += 16;
+	start_pos += sizeof(shader_template_prefix) - 1;
 	char32_t quote = p_code[start_pos];
 	while (quote == ' ' || quote == '\t') {
 		start_pos++;
@@ -10317,6 +10318,26 @@ String ShaderLanguage::get_shader_template(const String &p_code) {
 	}
 
 	return p_code.substr(start_pos + 1, end_pos - start_pos - 1);
+}
+
+String ShaderLanguage::inject_template_uniforms(const String &p_code, const String& p_uniforms, int& lines_injected) {
+	constexpr char shader_type_prefix[] = "shader_type ";
+	int start_pos = p_code.find(shader_type_prefix);
+	if (start_pos == -1) {
+		// No shader type, this will give a shader compile error later
+		return String();
+	}
+
+	// Find the start position of the line after `shader_type`
+	while (p_code[start_pos] != '\n') {
+		start_pos++;
+	}
+	start_pos++;
+
+	String lines_to_inject = "\ngroup_uniforms __ShaderTemplateParamaters;\n" + p_uniforms + "\ngroup_uniforms;\n";
+	lines_injected = lines_to_inject.count("\n");
+	// Inject uniform definitions into sgader source
+	return p_code.substr(0, start_pos) + lines_to_inject + p_code.substr(start_pos);
 }
 
 bool ShaderLanguage::is_builtin_func_out_parameter(const String &p_name, int p_param) {

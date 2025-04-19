@@ -55,6 +55,7 @@ public:
 
 	Shader::Mode get_mode() const;
 
+	void extract_uniforms(String& uniform_defs) const;
 	String get_code() const;
 	void set_code(const String &p_code);
 

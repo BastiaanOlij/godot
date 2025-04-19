@@ -1185,6 +1185,7 @@ public:
 	static String get_shader_type(const String &p_code);
 	static String get_shader_template(const String &p_code);
 	static bool is_builtin_func_out_parameter(const String &p_name, int p_param);
+	static String inject_template_uniforms(const String &p_code, const String& p_uniforms, int& lines_injected);
 
 	struct ShaderCompileInfo {
 		HashMap<StringName, FunctionInfo> functions;

@@ -130,6 +130,14 @@ void Shader::set_code(const String &p_code) {
 			RenderingServer::get_singleton()->shader_set_shader_template(shader, RID());
 		}
 	}
+
+	if (shader_template.is_valid()) {
+		int num_template_uniform_lines = 0;
+		String uniforms;
+		shader_template.ptr()->extract_uniforms(uniforms);
+		pp_code = ShaderLanguage::inject_template_uniforms(pp_code, uniforms, num_template_uniform_lines);
+	}
+
 	RenderingServer::get_singleton()->shader_set_code(shader, pp_code);
 
 	emit_changed();

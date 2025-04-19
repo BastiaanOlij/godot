@@ -543,6 +543,20 @@ void ShaderTextEditor::_validate_script() {
 			comp_info.shader_types = ShaderTypes::get_singleton()->get_types();
 		}
 
+		// Inject shader template uniforms
+		Ref<ShaderTemplate> shader_template;
+		int num_template_uniform_lines = 0;
+		String shader_template_path = ShaderLanguage::get_shader_template(code_pp);
+		if (!shader_template_path.is_empty()) {
+			shader_template = ResourceLoader::load(shader_template_path);
+		}
+		if (shader_template.is_valid()) {
+
+			String uniforms;
+			shader_template.ptr()->extract_uniforms(uniforms);
+			code_pp = ShaderLanguage::inject_template_uniforms(code_pp, uniforms, num_template_uniform_lines);
+		}
+
 		code = code_pp;
 		//compiler error
 		last_compile_result = sl.compile(code, comp_info);
@@ -558,12 +572,26 @@ void ShaderTextEditor::_validate_script() {
 				set_error_count(include_positions.size() - 1);
 			} else {
 				err_line = sl.get_error_line();
-				err_text = "error(" + itos(err_line) + "): " + sl.get_error_text();
+				// Restore error line number
+				if (err_line > 1) {
+					if (err_line <= num_template_uniform_lines) {
+						// Error is in the shader template uniform definition code
+						err_text = "shader template error(" + itos(err_line - 1) + "): " + sl.get_error_text();
+						err_line = 0;
+					} else {
+						err_line -= num_template_uniform_lines;
+						err_text = "error(" + itos(err_line) + "): " + sl.get_error_text();
+
+					}
+				}
+
 				set_error_count(0);
 			}
 			set_error(err_text);
 			set_error_pos(err_line - 1, 0);
-			get_text_editor()->set_line_background_color(err_line - 1, marked_line_color);
+			if (err_line > 0) {
+				get_text_editor()->set_line_background_color(err_line - 1, marked_line_color);
+			}
 		} else {
 			set_error("");
 		}
