@@ -149,6 +149,35 @@ String ShaderTemplate::get_code() const {
 	return code;
 }
 
+void ShaderTemplate::extract_uniforms(String& uniform_defs) const {
+	uniform_defs.clear();
+	bool is_defining_uniforms = false;
+
+	Vector<String> lines = code.split("\n");
+	for (int lidx = 0; lidx < lines.size(); lidx++) {
+		String line = lines[lidx];
+		if (line.begins_with("#[")) {
+			int pos = line.find("]");
+			ERR_FAIL_COND_MSG(pos == -1, "Incomplete tag found in shader template - " + String::num_int64(lidx) + ": " + line);
+
+			String tag = line.substr(2, pos - 2);
+			if (tag == "uniforms") {
+				// Only one `uniform` tag per shader template is allowed
+				ERR_FAIL_COND_MSG(is_defining_uniforms || !uniform_defs.is_empty(), "Duplicate definition of uniform section");
+
+				is_defining_uniforms = true;
+			} else {
+				is_defining_uniforms = false;
+			}
+		} else if (is_defining_uniforms) {
+			// Append uniform
+			uniform_defs += line + "\n";
+		} else {
+			// Skip this line, not related to uniform definition
+		}
+	}
+}
+
 void ShaderTemplate::set_code(const String &p_code) {
 	code = p_code;
 
