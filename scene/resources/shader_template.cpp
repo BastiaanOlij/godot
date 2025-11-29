@@ -46,17 +46,61 @@ void ShaderTemplate::_bind_methods() {
 
 String ShaderTemplate::_load_include_file(const String &p_path, const String &p_base_path) {
 	Error err;
+	// A stack keeping track of the include chain, so that no recursive include is happening.
+	static thread_local Vector<String> include_chain;
 
 	String include = p_path;
 	if (include.is_relative_path()) {
 		include = p_base_path.path_join(include);
 	}
 
+	if (include_chain.has(include)) {
+		// The location of #include directive triggering this is reported in the caller.
+		ERR_FAIL_V_MSG(String(), "Recursive #include: " + include);
+	}
+	include_chain.push_back(include);
+
 	Ref<FileAccess> file_inc = FileAccess::open(include, FileAccess::READ, &err);
 	if (err != OK) {
+		include_chain.remove_at(include_chain.size() - 1);
 		return String();
 	}
-	return file_inc->get_as_utf8_string();
+	String src = file_inc->get_as_utf8_string();
+
+	// Handle nested include.
+	Vector<String> lines = src.split("\n");
+	for (int lidx = 0; lidx < lines.size(); ++lidx) {
+		String& line = lines.write[lidx];
+		if (line.begins_with("#include")) {
+			String nested_include = line.replace("#include", "").strip_edges();
+
+			if (!nested_include.begins_with("\"") || !nested_include.ends_with("\"")) {
+				include_chain.remove_at(include_chain.size() - 1);
+				ERR_FAIL_V_MSG(String(), "Malformed #include syntax, expected #include \"<path>\" - " + include + ":" + String::num_int64(lidx) + ": " + line);
+			}
+
+			nested_include = nested_include.substr(1, nested_include.length() - 2).strip_edges();
+
+			if (ShaderIncludeDB::has_built_in_include_file(nested_include)) {
+				// Keep the include as is, we'll insert it later in case our shader supports multiple back-ends.
+				continue;
+			}
+
+			// Allow paths in nested #include to be relative to directories containing the files they're in.
+			String nested_src = _load_include_file(nested_include, include.substr(0, include.rfind_char('/') + 1));
+
+			if (nested_src.is_empty()) {
+				// The error message is printed for each #include directive in a chain to provide more information for debugging.
+				include_chain.remove_at(include_chain.size() - 1);
+				ERR_FAIL_V_MSG(String(), "Unexpected include file - " + include + ":" + String::num_int64(lidx) + ": " + line);
+			}
+
+			line = nested_src;
+		}
+	}
+
+	include_chain.remove_at(include_chain.size() - 1);
+	return String("\n").join(lines);
 }
 
 void ShaderTemplate::_update_template() {
