@@ -33,6 +33,7 @@
 #ifdef VISIONOS_ENABLED
 
 #include "core/templates/safe_refcount.h"
+#include "core/os/mutex.h"
 #include "drivers/metal/metal_objects_shared.h"
 #include "drivers/metal/rendering_context_driver_metal.h"
 #include "drivers/metal/rendering_device_driver_metal.h"
