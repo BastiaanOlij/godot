@@ -354,6 +354,7 @@ public:
 	ShaderCompiler compiler;
 	bool use_fp16 = false;
 	bool emulate_point_size = false;
+	bool use_clip_and_cull_distance = false;
 
 	RID default_shader;
 	RID default_material;

@@ -581,7 +581,7 @@ void SceneShaderForwardMobile::init(const String p_defines) {
 
 	// Store whether the shader will prefer using the FP16 variant.
 	use_fp16 = RD::get_singleton()->has_feature(RD::SUPPORTS_HALF_FLOAT);
-
+	use_clip_and_cull_distance = RD::get_singleton()->has_feature(RD::SUPPORTS_CLIP_AND_CULL_DISTANCE);
 	emulate_point_size = !RD::get_singleton()->has_feature(RD::SUPPORTS_POINT_SIZE);
 
 	// Immutable samplers : create the shadow sampler to be passed when creating the pipeline.
@@ -598,25 +598,28 @@ void SceneShaderForwardMobile::init(const String p_defines) {
 
 	{
 		Vector<ShaderRD::VariantDefine> shader_versions;
-		for (uint32_t fp16 = 0; fp16 < 2; fp16++) {
-			for (uint32_t ubershader = 0; ubershader < 2; ubershader++) {
-				String base_define = fp16 ? "\n#define EXPLICIT_FP16\n" : "";
-				int shader_group = fp16 ? SHADER_GROUP_FP16 : SHADER_GROUP_FP32;
-				int shader_group_multiview = fp16 ? SHADER_GROUP_FP16_MULTIVIEW : SHADER_GROUP_FP32_MULTIVIEW;
-				base_define += ubershader ? "\n#define UBERSHADER\n" : "";
+		for (uint32_t clip_distance = 0; clip_distance < 2; clip_distance++) {
+			for (uint32_t fp16 = 0; fp16 < 2; fp16++) {
+				for (uint32_t ubershader = 0; ubershader < 2; ubershader++) {
+					String base_define = fp16 ? "\n#define EXPLICIT_FP16\n" : "";
+					base_define += clip_distance ? "\n#define CLIP_CULL_DISTANCE_SUPPORTED\n" : "";
+					int shader_group = fp16 ? SHADER_GROUP_FP16 : SHADER_GROUP_FP32;
+					int shader_group_multiview = fp16 ? SHADER_GROUP_FP16_MULTIVIEW : SHADER_GROUP_FP32_MULTIVIEW;
+					base_define += ubershader ? "\n#define UBERSHADER\n" : "";
 
-				bool default_enabled = (uint32_t(use_fp16) == fp16);
-				shader_versions.push_back(ShaderRD::VariantDefine(shader_group, base_define + "", default_enabled)); // SHADER_VERSION_COLOR_PASS
-				shader_versions.push_back(ShaderRD::VariantDefine(shader_group, base_define + "\n#define USE_LIGHTMAP\n", default_enabled)); // SHADER_VERSION_LIGHTMAP_COLOR_PASS
-				shader_versions.push_back(ShaderRD::VariantDefine(shader_group, base_define + "\n#define MODE_RENDER_DEPTH\n#define SHADOW_PASS\n", default_enabled)); // SHADER_VERSION_SHADOW_PASS, should probably change this to MODE_RENDER_SHADOW because we don't have a depth pass here...
-				shader_versions.push_back(ShaderRD::VariantDefine(shader_group, base_define + "\n#define MODE_RENDER_DEPTH\n#define MODE_DUAL_PARABOLOID\n#define SHADOW_PASS\n", default_enabled)); // SHADER_VERSION_SHADOW_PASS_DP
-				shader_versions.push_back(ShaderRD::VariantDefine(shader_group, base_define + "\n#define MODE_RENDER_DEPTH\n#define MODE_RENDER_MATERIAL\n", default_enabled)); // SHADER_VERSION_DEPTH_PASS_WITH_MATERIAL
+					bool default_enabled = (uint32_t(use_fp16) == fp16) && (int32_t(use_clip_and_cull_distance) == clip_distance);
+					shader_versions.push_back(ShaderRD::VariantDefine(shader_group, base_define + "", default_enabled)); // SHADER_VERSION_COLOR_PASS
+					shader_versions.push_back(ShaderRD::VariantDefine(shader_group, base_define + "\n#define USE_LIGHTMAP\n", default_enabled)); // SHADER_VERSION_LIGHTMAP_COLOR_PASS
+					shader_versions.push_back(ShaderRD::VariantDefine(shader_group, base_define + "\n#define MODE_RENDER_DEPTH\n#define SHADOW_PASS\n", default_enabled)); // SHADER_VERSION_SHADOW_PASS, should probably change this to MODE_RENDER_SHADOW because we don't have a depth pass here...
+					shader_versions.push_back(ShaderRD::VariantDefine(shader_group, base_define + "\n#define MODE_RENDER_DEPTH\n#define MODE_DUAL_PARABOLOID\n#define SHADOW_PASS\n", default_enabled)); // SHADER_VERSION_SHADOW_PASS_DP
+					shader_versions.push_back(ShaderRD::VariantDefine(shader_group, base_define + "\n#define MODE_RENDER_DEPTH\n#define MODE_RENDER_MATERIAL\n", default_enabled)); // SHADER_VERSION_DEPTH_PASS_WITH_MATERIAL
 
-				// Multiview versions of our shaders.
-				shader_versions.push_back(ShaderRD::VariantDefine(shader_group_multiview, base_define + "\n#define USE_MULTIVIEW\n", false)); // SHADER_VERSION_COLOR_PASS_MULTIVIEW
-				shader_versions.push_back(ShaderRD::VariantDefine(shader_group_multiview, base_define + "\n#define USE_MULTIVIEW\n#define USE_LIGHTMAP\n", false)); // SHADER_VERSION_LIGHTMAP_COLOR_PASS_MULTIVIEW
-				shader_versions.push_back(ShaderRD::VariantDefine(shader_group_multiview, base_define + "\n#define USE_MULTIVIEW\n#define MODE_RENDER_DEPTH\n#define SHADOW_PASS\n", false)); // SHADER_VERSION_SHADOW_PASS_MULTIVIEW
-				shader_versions.push_back(ShaderRD::VariantDefine(shader_group_multiview, base_define + "\n#define USE_MULTIVIEW\n#define MODE_RENDER_MOTION_VECTORS\n", false)); // SHADER_VERSION_MOTION_VECTORS_MULTIVIEW
+					// Multiview versions of our shaders.
+					shader_versions.push_back(ShaderRD::VariantDefine(shader_group_multiview, base_define + "\n#define USE_MULTIVIEW\n", false)); // SHADER_VERSION_COLOR_PASS_MULTIVIEW
+					shader_versions.push_back(ShaderRD::VariantDefine(shader_group_multiview, base_define + "\n#define USE_MULTIVIEW\n#define USE_LIGHTMAP\n", false)); // SHADER_VERSION_LIGHTMAP_COLOR_PASS_MULTIVIEW
+					shader_versions.push_back(ShaderRD::VariantDefine(shader_group_multiview, base_define + "\n#define USE_MULTIVIEW\n#define MODE_RENDER_DEPTH\n#define SHADOW_PASS\n", false)); // SHADER_VERSION_SHADOW_PASS_MULTIVIEW
+					shader_versions.push_back(ShaderRD::VariantDefine(shader_group_multiview, base_define + "\n#define USE_MULTIVIEW\n#define MODE_RENDER_MOTION_VECTORS\n", false)); // SHADER_VERSION_MOTION_VECTORS_MULTIVIEW
+				}
 			}
 		}
 
@@ -863,7 +866,10 @@ void SceneShaderForwardMobile::init(const String p_defines) {
 		actions.base_texture_binding_index = 1;
 		actions.texture_layout_set = RenderForwardMobile::MATERIAL_UNIFORM_SET;
 		actions.base_uniform_string = "material.";
-		actions.base_varying_index = 15;
+		// TODO figure this out, it seems we need to reserve slots for each of the clipping planes,
+		// but we are reserving them now even if they are not used and the code isn't even included.
+		// there has to be a better way to do this!
+		actions.base_varying_index = 15 + 6;
 
 		actions.default_filter = ShaderLanguage::FILTER_LINEAR_MIPMAP;
 		actions.default_repeat = ShaderLanguage::REPEAT_ENABLE;
@@ -1023,6 +1029,9 @@ RID SceneShaderForwardMobile::get_default_shader_rd(bool p_is_multiview) {
 		int variant = p_is_multiview ? SHADER_VERSION_COLOR_PASS_MULTIVIEW : SHADER_VERSION_COLOR_PASS;
 		if (use_fp16) {
 			variant += SHADER_VERSION_MAX * 2;
+		}
+		if (use_clip_and_cull_distance) {
+			variant += SHADER_VERSION_MAX * 4;
 		}
 
 		MaterialData *md = static_cast<MaterialData *>(material_storage->material_get_data(default_material, RendererRD::MaterialStorage::SHADER_TYPE_3D));
